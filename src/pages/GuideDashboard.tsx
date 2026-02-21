@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -10,6 +10,7 @@ import { Star, MapPin, MessageSquare, Calendar, BookOpen, Camera, TrendingUp } f
 export default function GuideDashboard() {
   const { user, updateProfile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
   const [isCreatingItinerary, setIsCreatingItinerary] = useState(false);
   const [isAddingAttraction, setIsAddingAttraction] = useState(false);
@@ -66,6 +67,21 @@ export default function GuideDashboard() {
   ]);
 
   const [guideAttractions, setGuideAttractions] = useState(initialAttractions);
+  const validTabs = ["overview", "itineraries", "attractions", "bookings", "reviews", "messages", "profile"];
+
+  const handleTabChange = (tabId: string) => {
+    if (!validTabs.includes(tabId)) {
+      return;
+    }
+
+    setActiveTab(tabId);
+
+    const params = new URLSearchParams(location.search);
+    params.set("tab", tabId);
+    params.delete("t");
+
+    navigate(`${location.pathname}?${params.toString()}`, { replace: true });
+  };
 
   const handleBookingStatus = (requestId: string, status: "Confirmed" | "Rejected") => {
     setBookingRequests((prev) => prev.map((request) => (request.id === requestId ? { ...request, status } : request)));
@@ -79,8 +95,10 @@ export default function GuideDashboard() {
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get("tab");
-    if (tab === "profile") {
-      setActiveTab("profile");
+    if (tab && validTabs.includes(tab)) {
+      setActiveTab(tab);
+    } else {
+      setActiveTab("overview");
     }
   }, [location.search]);
 
@@ -244,7 +262,8 @@ export default function GuideDashboard() {
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  type="button"
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                     activeTab === tab.id ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
                   }`}
@@ -262,16 +281,21 @@ export default function GuideDashboard() {
             <div className="space-y-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: "Total Tourists", value: "87", icon: "👥" },
-                  { label: "Itineraries", value: "12", icon: "📍" },
-                  { label: "Avg Rating", value: "4.9", icon: "⭐" },
-                  { label: "Earnings", value: "₹62K", icon: "💰" },
+                  { label: "Total Tourists", value: "87", icon: "👥", tab: "bookings" },
+                  { label: "Itineraries", value: "12", icon: "📍", tab: "itineraries" },
+                  { label: "Avg Rating", value: "4.9", icon: "⭐", tab: "reviews" },
+                  { label: "Earnings", value: "₹62K", icon: "💰", tab: "bookings" },
                 ].map((stat) => (
-                  <div key={stat.label} className="card-travel p-4 text-center">
+                  <button
+                    key={stat.label}
+                    type="button"
+                    onClick={() => handleTabChange(stat.tab)}
+                    className="card-travel p-4 text-center w-full hover:border-primary/30 hover:bg-primary/5"
+                  >
                     <div className="text-2xl mb-1">{stat.icon}</div>
                     <div className="text-2xl font-bold text-foreground">{stat.value}</div>
                     <div className="text-xs text-muted-foreground">{stat.label}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
 
@@ -291,7 +315,7 @@ export default function GuideDashboard() {
                           <MapPin className="h-4 w-4" /> {myGuideProfile.location}
                         </p>
                       </div>
-                      <button onClick={() => setActiveTab("profile")} className="btn-outline-primary text-sm py-1.5">Edit Profile</button>
+                      <button type="button" onClick={() => handleTabChange("profile")} className="btn-outline-primary text-sm py-1.5">Edit Profile</button>
                     </div>
                     <p className="text-sm text-muted-foreground mt-3">{myGuideProfile.about}</p>
                     <div className="flex flex-wrap gap-2 mt-3">
