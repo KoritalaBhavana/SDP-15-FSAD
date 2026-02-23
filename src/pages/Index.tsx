@@ -11,6 +11,10 @@ import { toast } from "sonner";
 export default function Index() {
   const navigate = useNavigate();
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  };
+
   const handleUseOfferCode = async () => {
     const code = "STAYFIRST";
 
@@ -408,10 +412,10 @@ export default function Index() {
                 Join 50,000+ travellers who discovered India's most authentic homestays. Sign up free and get ₹500 off your first booking.
               </p>
               <div className="flex flex-wrap gap-4 justify-center">
-                <Link to="/auth?mode=signup" className="bg-primary text-white font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all hover:shadow-lg">
+                <Link to="/auth?mode=signup" onClick={scrollToTop} className="bg-primary text-white font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-all hover:shadow-lg">
                   Start Exploring — It's Free
                 </Link>
-                <Link to="/homestays" className="bg-white/10 border border-white/30 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/20 transition-all">
+                <Link to="/homestays" onClick={scrollToTop} className="bg-white/10 border border-white/30 text-white font-semibold px-8 py-3 rounded-xl hover:bg-white/20 transition-all">
                   Browse Homestays
                 </Link>
               </div>

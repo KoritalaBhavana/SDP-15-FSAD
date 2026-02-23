@@ -9,6 +9,7 @@ import {
   Wifi, Car, Utensils, Waves, Shield, Users, BedDouble,
   CheckCircle, X as XIcon
 } from "lucide-react";
+import { toast } from "sonner";
 
 const amenityIcons: Record<string, React.ReactNode> = {
   WiFi: <Wifi className="h-5 w-5" />,
@@ -37,8 +38,10 @@ export default function HomestayDetail() {
   ];
 
   const nights = checkIn && checkOut
-    ? Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
+    ? Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24))
     : 0;
+
+  const canReserve = !!checkIn && !!checkOut && nights > 0;
 
   const subtotal = nights * homestay.price;
   const taxes = Math.round(subtotal * 0.12);
@@ -62,6 +65,15 @@ export default function HomestayDetail() {
     ].join("\n");
 
     window.location.href = `mailto:hosts@stayvista.in?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
+  const handleReserveNow = () => {
+    if (!canReserve) {
+      toast.error("Please select valid check-in and check-out dates.");
+      return;
+    }
+
+    navigate(`/booking/${homestay.id}?checkin=${checkIn}&checkout=${checkOut}&guests=${guests}`);
   };
 
   return (
@@ -286,12 +298,13 @@ export default function HomestayDetail() {
                   </div>
                 )}
 
-                <Link
-                  to={`/booking/${homestay.id}?checkin=${checkIn}&checkout=${checkOut}&guests=${guests}`}
-                  className="btn-primary w-full text-center block"
+                <button
+                  onClick={handleReserveNow}
+                  className="btn-primary w-full text-center block disabled:opacity-60 disabled:cursor-not-allowed"
+                  disabled={!canReserve}
                 >
                   {nights > 0 ? `Book for ₹${total.toLocaleString()}` : "Reserve Now"}
-                </Link>
+                </button>
 
                 <div className="flex items-center gap-2 justify-center mt-3 text-xs text-muted-foreground">
                   <Shield className="h-3.5 w-3.5" />

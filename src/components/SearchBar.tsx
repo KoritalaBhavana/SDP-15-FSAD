@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Search, MapPin, Calendar, Users, X } from "lucide-react";
 import { INDIAN_LOCATIONS } from "@/lib/mockData";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface SearchBarProps {
   variant?: "hero" | "compact";
@@ -60,6 +61,20 @@ export default function SearchBar({ variant = "hero" }: SearchBarProps) {
   };
 
   const handleSearch = () => {
+    if (variant === "hero") {
+      if (!location.trim() || !checkIn || !checkOut) {
+        toast.error("Please fill destination, check-in and check-out dates.");
+        return;
+      }
+
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+      if (Number.isNaN(checkInDate.getTime()) || Number.isNaN(checkOutDate.getTime()) || checkOutDate.getTime() <= checkInDate.getTime()) {
+        toast.error("Please select a valid check-in and check-out date range.");
+        return;
+      }
+    }
+
     navigate(`/homestays?location=${encodeURIComponent(location)}&checkin=${checkIn}&checkout=${checkOut}&guests=${guests}`);
   };
 

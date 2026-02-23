@@ -43,6 +43,17 @@ export default function AboutUs() {
           </section>
 
           <section className="card-travel p-6">
+            <h2 className="text-xl font-semibold text-foreground mb-4">Our Team</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {["Sahithi", "Bhavana", "Saniya"].map((member) => (
+                <div key={member} className="rounded-xl border border-border bg-card p-4 text-center">
+                  <p className="font-semibold text-foreground">{member}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="card-travel p-6">
             <h2 className="text-xl font-semibold text-foreground mb-2">Contact</h2>
             <p className="text-muted-foreground text-sm leading-relaxed">
               Email: hello@stayvista.com

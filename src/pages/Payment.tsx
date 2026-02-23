@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -20,9 +20,21 @@ export default function Payment() {
   const homestay = homestays.find((h) => h.id === id) || homestays[0];
 
   const amount = Number(searchParams.get("amount")) || homestay.price * 2;
-  const nights = Number(searchParams.get("nights")) || 2;
+  const nights = Number(searchParams.get("nights")) || 0;
+  const days = Number(searchParams.get("days")) || nights;
   const checkIn = searchParams.get("checkin") || "";
   const checkOut = searchParams.get("checkout") || "";
+
+  const checkInDate = checkIn ? new Date(checkIn) : null;
+  const checkOutDate = checkOut ? new Date(checkOut) : null;
+  const isValidDateRange = !!checkInDate && !!checkOutDate && !Number.isNaN(checkInDate.getTime()) && !Number.isNaN(checkOutDate.getTime()) && checkOutDate.getTime() > checkInDate.getTime();
+
+  useEffect(() => {
+    if (!checkIn || !checkOut || !isValidDateRange || days <= 0 || nights <= 0) {
+      toast.error("Please select check-in, check-out and valid days before payment.");
+      navigate(`/booking/${id}?checkin=${checkIn}&checkout=${checkOut}`, { replace: true });
+    }
+  }, [checkIn, checkOut, days, id, isValidDateRange, navigate, nights]);
 
   const [method, setMethod] = useState("card");
   const [loading, setLoading] = useState(false);

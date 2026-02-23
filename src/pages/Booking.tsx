@@ -16,9 +16,13 @@ export default function Booking() {
   const checkOut = searchParams.get("checkout") || "";
   const guests = Number(searchParams.get("guests")) || 2;
 
-  const nights = checkIn && checkOut
-    ? Math.max(1, Math.ceil((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60 * 24)))
-    : 2;
+  const checkInDate = checkIn ? new Date(checkIn) : null;
+  const checkOutDate = checkOut ? new Date(checkOut) : null;
+  const isValidDateRange = !!checkInDate && !!checkOutDate && !Number.isNaN(checkInDate.getTime()) && !Number.isNaN(checkOutDate.getTime()) && checkOutDate.getTime() > checkInDate.getTime();
+
+  const nights = isValidDateRange
+    ? Math.ceil((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
 
   const subtotal = nights * homestay.price;
   const taxes = Math.round(subtotal * 0.12);
@@ -34,6 +38,11 @@ export default function Booking() {
   const handleProceedToPayment = () => {
     if (!checkIn || !checkOut) {
       toast.error("Please fill check-in and check-out dates.");
+      return;
+    }
+
+    if (!isValidDateRange || nights <= 0) {
+      toast.error("Please select valid check-in/check-out dates and number of days.");
       return;
     }
 
@@ -53,7 +62,7 @@ export default function Booking() {
       return;
     }
 
-    navigate(`/payment/${id}?amount=${total}&nights=${nights}&checkin=${checkIn}&checkout=${checkOut}&guests=${guests}`);
+    navigate(`/payment/${id}?amount=${total}&nights=${nights}&days=${nights}&checkin=${checkIn}&checkout=${checkOut}&guests=${guests}`);
   };
 
   return (
