@@ -303,7 +303,7 @@ export default function GuideDashboard() {
               <div className="card-travel p-6">
                 <div className="flex items-start gap-5">
                   <img
-                    src={myGuideProfile.image}
+                    src={user?.avatar || guideAvatar || myGuideProfile.image}
                     alt={myGuideProfile.name}
                     className="w-20 h-20 rounded-2xl object-cover"
                   />
