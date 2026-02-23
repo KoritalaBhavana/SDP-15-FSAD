@@ -93,6 +93,7 @@ export default function Index() {
             <Link
               key={cat.id}
               to={`/homestays?category=${cat.name}`}
+              onClick={scrollToTop}
               className="card-travel p-4 flex flex-col items-center text-center gap-2 hover:border-primary/30 hover:bg-primary/5 transition-all group"
             >
               <span className="text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
@@ -110,7 +111,7 @@ export default function Index() {
             <h2 className="section-heading">Featured Homestays</h2>
             <p className="text-muted-foreground mt-1">Handpicked for exceptional experiences</p>
           </div>
-          <Link to="/homestays" className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
+          <Link to="/homestays" onClick={scrollToTop} className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
             View all <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -131,7 +132,7 @@ export default function Index() {
             </div>
             <h2 className="section-heading">Popular Destinations</h2>
           </div>
-          <Link to="/homestays" className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
+          <Link to="/homestays" onClick={scrollToTop} className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
             Explore all <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
@@ -140,6 +141,7 @@ export default function Index() {
             <Link
               key={dest.name}
               to={`/homestays?location=${dest.name}`}
+              onClick={scrollToTop}
               className="group relative rounded-2xl overflow-hidden cursor-pointer"
             >
               <img
@@ -174,7 +176,7 @@ export default function Index() {
                 Use code <strong>STAYFIRST</strong> on your first homestay booking. Valid for new users. Min booking ₹1500.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link to="/homestays" className="bg-white text-primary font-bold px-6 py-3 rounded-xl hover:shadow-lg transition-all hover:scale-105">
+                <Link to="/homestays" onClick={scrollToTop} className="bg-white text-primary font-bold px-6 py-3 rounded-xl hover:shadow-lg transition-all hover:scale-105">
                   Book Now
                 </Link>
                 <button
@@ -199,13 +201,13 @@ export default function Index() {
             </div>
             <h2 className="section-heading">Tourist Attractions</h2>
           </div>
-          <Link to="/attractions" className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
+          <Link to="/attractions" onClick={scrollToTop} className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
             View all <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {attractions.map((attr) => (
-            <Link key={attr.id} to="/attractions" className="card-travel group overflow-hidden">
+            <Link key={attr.id} to="/attractions" onClick={scrollToTop} className="card-travel group overflow-hidden">
               <div className="relative overflow-hidden">
                 <img
                   src={attr.image}
@@ -250,7 +252,7 @@ export default function Index() {
               <h2 className="section-heading">Dine Your Way</h2>
               <p className="text-muted-foreground mt-1">Eat at local restaurants or hire a chef to cook at your homestay</p>
             </div>
-            <Link to="/dining" className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
+            <Link to="/dining" onClick={scrollToTop} className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
               View all <ChevronRight className="h-4 w-4" />
             </Link>
           </div>
@@ -260,7 +262,7 @@ export default function Index() {
               <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><UtensilsCrossed className="h-4 w-4 text-primary" /> Nearby Restaurants</h3>
               <div className="space-y-3">
                 {restaurants.slice(0, 3).map((r) => (
-                  <Link key={r.id} to="/dining" className="card-travel p-4 flex gap-4 items-center group hover:border-primary/30">
+                  <Link key={r.id} to="/dining" onClick={scrollToTop} className="card-travel p-4 flex gap-4 items-center group hover:border-primary/30">
                     <img src={r.image} alt={r.name} className="w-20 h-20 rounded-xl object-cover flex-shrink-0" />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">{r.name}</h4>
@@ -279,7 +281,7 @@ export default function Index() {
               <h3 className="font-bold text-foreground mb-4 flex items-center gap-2"><ChefHat className="h-4 w-4 text-primary" /> Hire a Local Chef</h3>
               <div className="space-y-3">
                 {chefs.slice(0, 3).map((c) => (
-                  <Link key={c.id} to="/dining" className="card-travel p-4 flex gap-4 items-center group hover:border-primary/30">
+                  <Link key={c.id} to="/dining" onClick={scrollToTop} className="card-travel p-4 flex gap-4 items-center group hover:border-primary/30">
                     <img src={c.image} alt={c.name} className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border-2 border-border" />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">{c.name}</h4>
@@ -309,13 +311,13 @@ export default function Index() {
             <h2 className="section-heading">Local Expert Guides</h2>
             <p className="text-muted-foreground mt-1">Explore with people who know every hidden corner</p>
           </div>
-          <Link to="/guides" className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
+          <Link to="/guides" onClick={scrollToTop} className="flex items-center gap-1 text-primary font-semibold text-sm hover:gap-2 transition-all">
             All guides <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {guides.map((guide) => (
-            <Link key={guide.id} to="/guides" className="card-travel p-5 flex gap-4 items-start group hover:border-primary/30">
+            <Link key={guide.id} to="/guides" onClick={scrollToTop} className="card-travel p-5 flex gap-4 items-start group hover:border-primary/30">
               <img
                 src={guide.image}
                 alt={guide.name}
