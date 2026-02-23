@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { signInWithPopup } from "firebase/auth";
-import { getFirebaseAuth, googleProvider } from "@/lib/firebase";
+import { getFirebaseAuth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 
 export type UserRole = "tourist" | "host" | "guide" | "admin";
 
@@ -67,6 +67,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const authWithGoogle = async (role: UserRole, mode: "signin" | "signup") => {
     if (mode === "signup" && role === "admin") {
       throw new Error("Admin signup is disabled. Please sign in with an existing admin account.");
+    }
+
+    if (!isFirebaseConfigured) {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+      const email = `google.user.${Date.now()}@example.com`;
+
+      setUser({
+        id: `google-${Date.now()}`,
+        name: "Google User",
+        email,
+        role,
+        avatar: `https://i.pravatar.cc/150?u=${email}`,
+      });
+      return;
     }
 
     const auth = getFirebaseAuth();

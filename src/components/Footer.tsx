@@ -1,7 +1,88 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Home, Mail, Phone, Facebook, Instagram, Twitter, Youtube } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { toast } from "sonner";
 
 export default function Footer() {
+  const navigate = useNavigate();
+  const { user, isLoggedIn } = useAuth();
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  };
+
+  const navigateTo = (path: string) => {
+    navigate(path);
+    scrollToTop();
+  };
+
+  const roleLabel = user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "Guest";
+
+  const openTouristLogin = () => {
+    if (!isLoggedIn) {
+      navigateTo("/auth?role=tourist");
+      return;
+    }
+
+    if (user?.role === "tourist") {
+      toast.success("You are already logged in as Tourist.");
+      navigateTo(`/tourist-dashboard?tab=discover&t=${Date.now()}`);
+      return;
+    }
+
+    toast.error(`You are logged in as ${roleLabel}. Please sign in as Tourist.`);
+  };
+
+  const openHostSignup = () => {
+    if (!isLoggedIn) {
+      toast.success("Create a Host account to list your property.");
+      navigateTo("/auth?mode=signup&role=host");
+      return;
+    }
+
+    if (user?.role === "host") {
+      navigateTo(`/host-dashboard?tab=overview&t=${Date.now()}`);
+      return;
+    }
+
+    toast.error(`You are ${roleLabel}. Please sign up as Homestay Host to list your property.`);
+  };
+
+  const openGuideSignup = () => {
+    if (!isLoggedIn) {
+      toast.success("Sign up as Guide to start offering local experiences.");
+      navigateTo("/auth?mode=signup&role=guide");
+      return;
+    }
+
+    if (user?.role === "guide") {
+      navigateTo(`/guide-dashboard?tab=overview&t=${Date.now()}`);
+      return;
+    }
+
+    toast.error(`You are ${roleLabel}. Please sign up as Guide to continue.`);
+  };
+
+  const openTravelBlog = () => {
+    if (!isLoggedIn) {
+      toast.error("Please sign in as Tourist to write a travel blog.");
+      navigateTo("/auth?role=tourist");
+      return;
+    }
+
+    if (user?.role !== "tourist") {
+      toast.error(`You are ${roleLabel}. Travel blogs are available for Tourist accounts.`);
+      return;
+    }
+
+    navigateTo(`/tourist-dashboard?tab=history&t=${Date.now()}`);
+  };
+
+  const openGiftCards = () => {
+    toast.success("Gift cards support is available via support team. Call 1800-123-4567.");
+    scrollToTop();
+  };
+
   return (
     <footer className="bg-foreground text-background">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 md:py-16">
@@ -40,7 +121,9 @@ export default function Footer() {
                 { label: "Special Offers", path: "/homestays" },
               ].map((item) => (
                 <li key={item.label}>
-                  <Link to={item.path} className="text-sm text-background/80 hover:text-accent transition-colors">{item.label}</Link>
+                  <button onClick={() => navigateTo(item.path)} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                    {item.label}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -50,17 +133,31 @@ export default function Footer() {
           <div>
             <h4 className="font-semibold text-sm uppercase tracking-wide text-background/60 mb-4">For You</h4>
             <ul className="space-y-2">
-              {[
-                { label: "Tourist Login", path: "/auth" },
-                { label: "List Your Property", path: "/auth?mode=signup" },
-                { label: "Become a Guide", path: "/auth?mode=signup" },
-                { label: "Travel Blog", path: "/" },
-                { label: "Gift Cards", path: "/" },
-              ].map((item) => (
-                <li key={item.label}>
-                  <Link to={item.path} className="text-sm text-background/80 hover:text-accent transition-colors">{item.label}</Link>
-                </li>
-              ))}
+              <li>
+                <button onClick={openTouristLogin} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                  Tourist Login
+                </button>
+              </li>
+              <li>
+                <button onClick={openHostSignup} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                  List Your Property
+                </button>
+              </li>
+              <li>
+                <button onClick={openGuideSignup} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                  Become a Guide
+                </button>
+              </li>
+              <li>
+                <button onClick={openTravelBlog} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                  Travel Blog
+                </button>
+              </li>
+              <li>
+                <button onClick={openGiftCards} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                  Gift Cards
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -85,9 +182,10 @@ export default function Footer() {
         <div className="border-t border-background/10 mt-10 pt-6 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-background/50">© 2025 StayVista. All rights reserved.</p>
           <div className="flex gap-6">
-            {["Privacy Policy", "Terms of Service", "Cookie Policy", "About Us"].map((item) => (
-              <Link key={item} to="/" className="text-xs text-background/50 hover:text-accent transition-colors">{item}</Link>
-            ))}
+            <Link to="/privacy-policy" onClick={scrollToTop} className="text-xs text-background/50 hover:text-accent transition-colors">Privacy Policy</Link>
+            <Link to="/terms-of-service" onClick={scrollToTop} className="text-xs text-background/50 hover:text-accent transition-colors">Terms of Service</Link>
+            <Link to="/cookie-policy" onClick={scrollToTop} className="text-xs text-background/50 hover:text-accent transition-colors">Cookie Policy</Link>
+            <Link to="/about-us" onClick={scrollToTop} className="text-xs text-background/50 hover:text-accent transition-colors">About Us</Link>
           </div>
         </div>
       </div>

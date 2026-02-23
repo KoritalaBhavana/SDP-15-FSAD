@@ -20,6 +20,9 @@ export default function TouristDashboard() {
   const [profileName, setProfileName] = useState(user?.name || "");
   const [profileEmail, setProfileEmail] = useState(user?.email || "");
   const [profileAvatar, setProfileAvatar] = useState(user?.avatar || "");
+  const [selectedBlogTrip, setSelectedBlogTrip] = useState<{ name: string; location: string; date: string } | null>(null);
+  const [blogDraft, setBlogDraft] = useState("");
+  const [publishedBlogs, setPublishedBlogs] = useState<Array<{ id: string; title: string; content: string; createdAt: string }>>([]);
 
   const notifications = [
     "Your trip to Manali is confirmed.",
@@ -40,6 +43,12 @@ export default function TouristDashboard() {
     { id: "1", homestay: "Mountain Dew Cottage", location: "Manali", dates: "Mar 15 - Mar 18, 2025", guests: 2, amount: 3600, status: "Confirmed", image: "/src/assets/homestay-1.jpg" },
     { id: "2", homestay: "Kerala Heritage Home", location: "Munnar", dates: "Apr 5 - Apr 8, 2025", guests: 4, amount: 5400, status: "Pending", image: "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=400&q=80" },
   ]);
+
+  const historyTrips = [
+    { id: "h1", name: "Desert Dunes Camp", location: "Jaisalmer", date: "Dec 2024", amount: 7000, rating: 5 },
+    { id: "h2", name: "Beachside Paradise", location: "Goa", date: "Oct 2024", amount: 5000, rating: 4 },
+    { id: "h3", name: "Rishikesh River View", location: "Rishikesh", date: "Aug 2024", amount: 1998, rating: 5 },
+  ];
 
   const handleStatClick = (label: string) => {
     if (label === "Trips Taken") {
@@ -108,6 +117,41 @@ export default function TouristDashboard() {
       setSelectedTripId(null);
     }
     toast.success("Booking cancelled.");
+  };
+
+  const handleOpenBlogEditor = (trip: { name: string; location: string; date: string }) => {
+    setSelectedBlogTrip(trip);
+    setBlogDraft("");
+  };
+
+  const handlePublishBlog = () => {
+    if (!selectedBlogTrip) return;
+    const trimmedDraft = blogDraft.trim();
+
+    if (trimmedDraft.length < 20) {
+      toast.error("Please write at least 20 characters before publishing.");
+      return;
+    }
+
+    const title = `${selectedBlogTrip.name} • ${selectedBlogTrip.location}`;
+    setPublishedBlogs((prev) => [
+      {
+        id: `${Date.now()}`,
+        title,
+        content: trimmedDraft,
+        createdAt: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
+      },
+      ...prev,
+    ]);
+    setSelectedBlogTrip(null);
+    setBlogDraft("");
+    toast.success("Your travel blog has been published.");
+  };
+
+  const handleSkipBlog = () => {
+    setSelectedBlogTrip(null);
+    setBlogDraft("");
+    toast.success("No problem. You can write a blog later anytime.");
   };
 
   return (
@@ -434,19 +478,27 @@ export default function TouristDashboard() {
               <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <History className="h-5 w-5 text-primary" /> Travel History
               </h2>
+              <div className="card-travel p-4 mb-4">
+                <h3 className="font-semibold text-foreground">Share your experience (optional)</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Loved your stay? Write a short blog for fellow travellers. Prefer not to write now? You can skip it.
+                </p>
+              </div>
               <div className="space-y-3">
-                {[
-                  { name: "Desert Dunes Camp", location: "Jaisalmer", date: "Dec 2024", amount: 7000, rating: 5 },
-                  { name: "Beachside Paradise", location: "Goa", date: "Oct 2024", amount: 5000, rating: 4 },
-                  { name: "Rishikesh River View", location: "Rishikesh", date: "Aug 2024", amount: 1998, rating: 5 },
-                ].map((h, i) => (
-                  <div key={i} className="card-travel p-4 flex items-center gap-4">
+                {historyTrips.map((h) => (
+                  <div key={h.id} className="card-travel p-4 flex items-center gap-4">
                     <div className="w-12 h-12 gradient-warm rounded-xl flex items-center justify-center flex-shrink-0">
                       <span className="text-white text-lg">🏠</span>
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-foreground">{h.name}</h3>
                       <p className="text-sm text-muted-foreground">{h.location} • {h.date}</p>
+                      <button
+                        onClick={() => handleOpenBlogEditor({ name: h.name, location: h.location, date: h.date })}
+                        className="text-sm text-primary font-medium hover:underline mt-1"
+                      >
+                        Write blog (optional)
+                      </button>
                     </div>
                     <div className="text-right">
                       <div className="font-bold text-foreground">₹{h.amount.toLocaleString()}</div>
@@ -459,6 +511,23 @@ export default function TouristDashboard() {
                   </div>
                 ))}
               </div>
+
+              {publishedBlogs.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-bold text-foreground mb-3">Your Published Blogs</h3>
+                  <div className="space-y-3">
+                    {publishedBlogs.map((blog) => (
+                      <div key={blog.id} className="card-travel p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <h4 className="font-semibold text-foreground">{blog.title}</h4>
+                          <span className="text-xs text-muted-foreground">{blog.createdAt}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2 whitespace-pre-wrap">{blog.content}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -477,6 +546,31 @@ export default function TouristDashboard() {
               </div>
               <div className="flex justify-end gap-2 mt-4">
                 <button onClick={() => setSelectedTripId(null)} className="btn-outline-primary text-sm py-1.5">Close</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {selectedBlogTrip && (
+          <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+            <div className="bg-card border border-border rounded-2xl w-full max-w-2xl p-5">
+              <h3 className="text-lg font-bold text-foreground">Write your travel blog</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {selectedBlogTrip.name} • {selectedBlogTrip.location} • {selectedBlogTrip.date}
+              </p>
+              <textarea
+                value={blogDraft}
+                onChange={(e) => setBlogDraft(e.target.value)}
+                placeholder="Share your experience, highlights, and tips for other travellers..."
+                className="mt-4 w-full min-h-40 rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+              <div className="flex items-center justify-between mt-2">
+                <p className="text-xs text-muted-foreground">This is optional. You can skip now and write later.</p>
+                <p className="text-xs text-muted-foreground">{blogDraft.trim().length} characters</p>
+              </div>
+              <div className="flex justify-end gap-2 mt-4">
+                <button onClick={handleSkipBlog} className="btn-outline-primary text-sm py-1.5">Skip for now</button>
+                <button onClick={handlePublishBlog} className="btn-primary text-sm py-1.5">Publish blog</button>
               </div>
             </div>
           </div>

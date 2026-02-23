@@ -64,6 +64,16 @@ export default function Auth() {
   const signupRoles = roles.filter((role) => role.id !== "admin");
 
   useEffect(() => {
+    const roleParam = searchParams.get("role");
+    if (!roleParam) return;
+
+    const allowedRoles: UserRole[] = isSignup ? ["tourist", "host", "guide"] : ["tourist", "host", "guide", "admin"];
+    if (allowedRoles.includes(roleParam as UserRole)) {
+      setSelectedRole(roleParam as UserRole);
+    }
+  }, [searchParams, isSignup]);
+
+  useEffect(() => {
     if (isSignup && selectedRole === "admin") {
       setSelectedRole("tourist");
     }
