@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, ReactNode } from "react";
 import { signInWithPopup } from "firebase/auth";
 import { getFirebaseAuth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
 
-export type UserRole = "tourist" | "host" | "guide" | "admin";
+export type UserRole = "tourist" | "host" | "guide" | "chef" | "admin";
 
 export interface User {
   id: string;

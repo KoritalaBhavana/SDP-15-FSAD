@@ -63,6 +63,21 @@ export default function Footer() {
     toast.error(`You are ${roleLabel}. Please sign up as Guide to continue.`);
   };
 
+  const openChefSignup = () => {
+    if (!isLoggedIn) {
+      toast.success("Sign up as Chef to start receiving cooking requests.");
+      navigateTo("/auth?mode=signup&role=chef");
+      return;
+    }
+
+    if (user?.role === "chef") {
+      navigateTo(`/chef-dashboard?tab=overview&t=${Date.now()}`);
+      return;
+    }
+
+    toast.error(`You are ${roleLabel}. Please sign up as Chef to continue.`);
+  };
+
   const openTravelBlog = () => {
     if (!isLoggedIn) {
       toast.error("Please sign in as Tourist to write a travel blog.");
@@ -146,6 +161,11 @@ export default function Footer() {
               <li>
                 <button onClick={openGuideSignup} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
                   Become a Guide
+                </button>
+              </li>
+              <li>
+                <button onClick={openChefSignup} className="text-sm text-background/80 hover:text-accent transition-colors text-left">
+                  Become a Chef
                 </button>
               </li>
               <li>

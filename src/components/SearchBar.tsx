@@ -19,12 +19,26 @@ export default function SearchBar({ variant = "hero" }: SearchBarProps) {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const normalizeText = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  const stateSuggestions = Array.from(
+    new Set(
+      INDIAN_LOCATIONS.map((loc) => {
+        const parts = loc.split(",");
+        return (parts[parts.length - 1] || "").trim();
+      }).filter(Boolean)
+    )
+  );
+
   useEffect(() => {
     if (location.length > 1) {
-      const filtered = INDIAN_LOCATIONS.filter((loc) =>
-        loc.toLowerCase().includes(location.toLowerCase())
-      );
-      setSuggestions(filtered.slice(0, 6));
+      const normalizedQuery = normalizeText(location);
+
+      const fromLocations = INDIAN_LOCATIONS.filter((loc) => normalizeText(loc).includes(normalizedQuery));
+      const fromStates = stateSuggestions.filter((state) => normalizeText(state).includes(normalizedQuery));
+      const merged = Array.from(new Set([...fromStates, ...fromLocations]));
+
+      setSuggestions(merged.slice(0, 8));
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
@@ -105,7 +119,7 @@ export default function SearchBar({ variant = "hero" }: SearchBarProps) {
               <input
                 ref={inputRef}
                 className="input-search w-full pl-9 pr-9"
-                placeholder="Search destination..."
+                placeholder="Search city or state..."
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 onFocus={() => location.length > 1 && setShowSuggestions(true)}

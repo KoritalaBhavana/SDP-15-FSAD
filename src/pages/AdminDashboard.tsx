@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { homestays, guides } from "@/lib/mockData";
+import { homestays, guides, chefs } from "@/lib/mockData";
 import { toast } from "sonner";
 import { Users, Building, Map, Calendar, UserCheck, Shield } from "lucide-react";
 
@@ -12,7 +12,7 @@ type ApplicationStatus = "applied" | "interview_scheduled" | "interviewed" | "ap
 type Candidate = {
   id: string;
   name: string;
-  role: "host" | "guide";
+  role: "host" | "guide" | "chef";
   city: string;
   experience: string;
   email: string;
@@ -29,7 +29,7 @@ export default function AdminDashboard() {
   const [adminName, setAdminName] = useState(user?.name || "");
   const [adminEmail, setAdminEmail] = useState(user?.email || "");
   const [adminAvatar, setAdminAvatar] = useState(user?.avatar || "");
-  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "tourist" | "host" | "guide">("all");
+  const [userRoleFilter, setUserRoleFilter] = useState<"all" | "tourist" | "host" | "guide" | "chef">("all");
   const [candidateFilter, setCandidateFilter] = useState<"all" | "pending" | "interviewed" | "appointed">("all");
   const [pendingDecision, setPendingDecision] = useState<{ candidateId: string; action: "appoint" | "reject" } | null>(null);
   const [users, setUsers] = useState([
@@ -38,6 +38,7 @@ export default function AdminDashboard() {
     { id: "u3", name: "Neha Das", role: "guide", email: "neha.guide@example.com", city: "Shillong", status: "Pending" },
     { id: "u4", name: "Rohit Rao", role: "tourist", email: "rohit@example.com", city: "Bengaluru", status: "Active" },
     { id: "u5", name: "Karan Patel", role: "host", email: "karan.host@example.com", city: "Goa", status: "Pending" },
+    { id: "u6", name: "Ananya Iyer", role: "chef", email: "ananya.chef@example.com", city: "Pondicherry", status: "Pending" },
   ]);
 
   const [candidates, setCandidates] = useState<Candidate[]>([
@@ -45,11 +46,14 @@ export default function AdminDashboard() {
     { id: "c2", name: "Vivek Nair", role: "host", city: "Munnar", experience: "4 years", email: "vivek.host@example.com", status: "interview_scheduled", interviewDate: "Feb 24, 2026", resumeFile: "/resumes/vivek-nair-resume.pdf" },
     { id: "c3", name: "Rahul Chauhan", role: "guide", city: "Darjeeling", experience: "8 years", email: "rahul.guide@example.com", status: "interviewed", resumeFile: "/resumes/rahul-chauhan-resume.pdf" },
     { id: "c4", name: "Meera Joshi", role: "host", city: "Udaipur", experience: "5 years", email: "meera.host@example.com", status: "appointed", resumeFile: "/resumes/meera-joshi-resume.pdf" },
+    { id: "c5", name: "Rohan Kapoor", role: "chef", city: "Goa", experience: "7 years", email: "rohan.chef@example.com", status: "applied", resumeFile: "/resumes/rahul-chauhan-resume.txt" },
+    { id: "c6", name: "Nisha Menon", role: "chef", city: "Kochi", experience: "5 years", email: "nisha.chef@example.com", status: "interview_scheduled", interviewDate: "Feb 27, 2026", resumeFile: "/resumes/meera-joshi-resume.txt" },
   ]);
 
   const touristsCount = 1280;
   const hostsCount = homestays.length;
   const guidesCount = guides.length;
+  const chefsCount = chefs.length;
 
   const pendingInterviews = candidates.filter((candidate) => candidate.status === "applied" || candidate.status === "interview_scheduled").length;
   const appointedCount = candidates.filter((candidate) => candidate.status === "appointed").length;
@@ -168,6 +172,12 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (label === "Chefs") {
+      setActiveTab("users");
+      setUserRoleFilter("chef");
+      return;
+    }
+
     if (label === "Pending Interviews") {
       setActiveTab("interviews");
       setCandidateFilter("pending");
@@ -225,11 +235,12 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
           {activeTab === "overview" && (
             <div className="space-y-8">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 {[
                   { label: "Tourists", value: touristsCount.toLocaleString(), icon: <Users className="h-5 w-5" /> },
                   { label: "Homestay Hosts", value: hostsCount.toString(), icon: <Building className="h-5 w-5" /> },
                   { label: "Guides", value: guidesCount.toString(), icon: <Map className="h-5 w-5" /> },
+                  { label: "Chefs", value: chefsCount.toString(), icon: <Shield className="h-5 w-5" /> },
                   { label: "Pending Interviews", value: pendingInterviews.toString(), icon: <Calendar className="h-5 w-5" /> },
                   { label: "Appointed", value: appointedCount.toString(), icon: <UserCheck className="h-5 w-5" /> },
                 ].map((stat) => (
@@ -268,10 +279,11 @@ export default function AdminDashboard() {
                     { id: "tourist", label: "Tourists" },
                     { id: "host", label: "Hosts" },
                     { id: "guide", label: "Guides" },
+                    { id: "chef", label: "Chefs" },
                   ].map((filter) => (
                     <button
                       key={filter.id}
-                      onClick={() => setUserRoleFilter(filter.id as "all" | "tourist" | "host" | "guide")}
+                      onClick={() => setUserRoleFilter(filter.id as "all" | "tourist" | "host" | "guide" | "chef")}
                       className={`text-xs px-3 py-1.5 rounded-full border ${userRoleFilter === filter.id ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:bg-muted"}`}
                     >
                       {filter.label}

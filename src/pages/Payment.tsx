@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import { homestays } from "@/lib/mockData";
 import { Shield, CheckCircle, CreditCard, Smartphone, Building2, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const PAYMENT_METHODS = [
   { id: "card", label: "Credit / Debit Card", icon: CreditCard },
@@ -17,6 +18,7 @@ export default function Payment() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
   const homestay = homestays.find((h) => h.id === id) || homestays[0];
 
   const amount = Number(searchParams.get("amount")) || homestay.price * 2;
@@ -30,11 +32,17 @@ export default function Payment() {
   const isValidDateRange = !!checkInDate && !!checkOutDate && !Number.isNaN(checkInDate.getTime()) && !Number.isNaN(checkOutDate.getTime()) && checkOutDate.getTime() > checkInDate.getTime();
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      window.alert("Please sign in or sign up first.");
+      navigate("/auth?mode=signin", { replace: true });
+      return;
+    }
+
     if (!checkIn || !checkOut || !isValidDateRange || days <= 0 || nights <= 0) {
       toast.error("Please select check-in, check-out and valid days before payment.");
       navigate(`/booking/${id}?checkin=${checkIn}&checkout=${checkOut}`, { replace: true });
     }
-  }, [checkIn, checkOut, days, id, isValidDateRange, navigate, nights]);
+  }, [checkIn, checkOut, days, id, isLoggedIn, isValidDateRange, navigate, nights]);
 
   const [method, setMethod] = useState("card");
   const [loading, setLoading] = useState(false);
@@ -47,6 +55,12 @@ export default function Payment() {
   const [selectedProvider, setSelectedProvider] = useState("");
 
   const handlePay = async () => {
+    if (!isLoggedIn) {
+      window.alert("Please sign in or sign up first.");
+      navigate("/auth?mode=signin", { replace: true });
+      return;
+    }
+
     if (method === "card") {
       if (!cardNum.trim() || !cardExpiry.trim() || !cardCvv.trim() || !cardName.trim()) {
         toast.error("Please fill all card details.");

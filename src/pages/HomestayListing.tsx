@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomestayCard from "@/components/HomestayCard";
-import { homestays } from "@/lib/mockData";
-import { SlidersHorizontal, Map, List, ChevronDown, X } from "lucide-react";
+import { homestays, INDIAN_LOCATIONS } from "@/lib/mockData";
+import { SlidersHorizontal, Map, List, ChevronDown, X, Search } from "lucide-react";
 
 const PRICE_RANGES = [
   { label: "Under ₹1,000", min: 0, max: 1000 },
@@ -24,6 +24,7 @@ const SORT_OPTIONS = [
 
 export default function HomestayListing() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const locationQuery = searchParams.get("location") || "";
   const categoryQuery = searchParams.get("category") || "";
 
@@ -33,6 +34,64 @@ export default function HomestayListing() {
   const [sortBy, setSortBy] = useState("recommended");
   const [viewMode, setViewMode] = useState<"list" | "grid">("grid");
   const [showFilters, setShowFilters] = useState(false);
+  const [destinationSearch, setDestinationSearch] = useState(locationQuery);
+
+  const stateOptions = Array.from(
+    new Set(
+      INDIAN_LOCATIONS.map((loc) => {
+        const parts = loc.split(",");
+        return (parts[parts.length - 1] || "").trim();
+      }).filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
+  const [selectedState, setSelectedState] = useState(
+    stateOptions.includes(locationQuery) ? locationQuery : "all"
+  );
+
+  const normalizeText = (value: string) => value.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+  const matchesDestination = (homestayLocation: string, query: string) => {
+    const normalizedQuery = normalizeText(query);
+    if (!normalizedQuery) return true;
+
+    const parts = homestayLocation.split(",").map((part) => part.trim());
+    const city = parts[0] || homestayLocation;
+    const state = parts[parts.length - 1] || "";
+
+    return (
+      normalizeText(homestayLocation).includes(normalizedQuery) ||
+      normalizeText(city).includes(normalizedQuery) ||
+      normalizeText(state).includes(normalizedQuery)
+    );
+  };
+
+  const applyDestinationSearch = () => {
+    const params = new URLSearchParams(searchParams);
+
+    if (destinationSearch.trim()) {
+      params.set("location", destinationSearch.trim());
+    } else {
+      params.delete("location");
+    }
+
+    navigate(`/homestays?${params.toString()}`, { replace: true });
+  };
+
+  const handleStateChange = (stateValue: string) => {
+    setSelectedState(stateValue);
+
+    const params = new URLSearchParams(searchParams);
+    if (stateValue === "all") {
+      setDestinationSearch("");
+      params.delete("location");
+    } else {
+      setDestinationSearch(stateValue);
+      params.set("location", stateValue);
+    }
+
+    navigate(`/homestays?${params.toString()}`, { replace: true });
+  };
 
   const toggleCategory = (cat: string) => {
     setSelectedCategories((prev) => prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]);
@@ -43,8 +102,15 @@ export default function HomestayListing() {
   };
 
   let filtered = [...homestays];
-  if (locationQuery) {
-    filtered = filtered.filter((h) => h.location.toLowerCase().includes(locationQuery.toLowerCase()));
+  if (destinationSearch.trim()) {
+    filtered = filtered.filter((h) => matchesDestination(h.location, destinationSearch));
+  }
+  if (selectedState !== "all") {
+    filtered = filtered.filter((h) => {
+      const parts = h.location.split(",").map((part) => part.trim());
+      const state = parts[parts.length - 1] || "";
+      return normalizeText(state).includes(normalizeText(selectedState));
+    });
   }
   if (selectedCategories.length > 0) {
     filtered = filtered.filter((h) => selectedCategories.includes(h.category));
@@ -69,11 +135,37 @@ export default function HomestayListing() {
           <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
             <div>
               <h1 className="font-bold text-foreground">
-                {locationQuery ? `Homestays in ${locationQuery}` : "All Homestays"}
+                {destinationSearch ? `Homestays in ${destinationSearch}` : "All Homestays"}
               </h1>
               <p className="text-sm text-muted-foreground">{filtered.length} properties found</p>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 border border-border rounded-xl px-3 py-2 bg-card">
+                <Search className="h-4 w-4 text-muted-foreground" />
+                <input
+                  value={destinationSearch}
+                  onChange={(e) => setDestinationSearch(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && applyDestinationSearch()}
+                  placeholder="Search city or state"
+                  className="bg-transparent outline-none text-sm text-foreground placeholder:text-muted-foreground w-40 md:w-52"
+                />
+                <button onClick={applyDestinationSearch} className="text-xs text-primary font-medium hover:underline">
+                  Search
+                </button>
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedState}
+                  onChange={(e) => handleStateChange(e.target.value)}
+                  className="input-search pr-8 py-2 text-sm appearance-none cursor-pointer"
+                >
+                  <option value="all">All States</option>
+                  {stateOptions.map((state) => (
+                    <option key={state} value={state}>{state}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              </div>
               <div className="relative">
                 <select
                   value={sortBy}

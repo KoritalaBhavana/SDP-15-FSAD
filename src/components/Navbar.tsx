@@ -21,6 +21,7 @@ export default function Navbar() {
     switch (user.role) {
       case "host": return "/host-dashboard";
       case "guide": return "/guide-dashboard";
+      case "chef": return "/chef-dashboard";
       case "admin": return "/admin-dashboard";
       default: return "/tourist-dashboard";
     }
@@ -32,6 +33,7 @@ export default function Navbar() {
       case "tourist": return "discover";
       case "host": return "overview";
       case "guide": return "overview";
+      case "chef": return "overview";
       case "admin": return "overview";
       default: return "overview";
     }

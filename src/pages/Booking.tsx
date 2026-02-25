@@ -1,15 +1,18 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useSearchParams, useNavigate, Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { homestays } from "@/lib/mockData";
 import { Shield, ChevronLeft, MapPin, Calendar, Users, Star, CheckCircle, CreditCard } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Booking() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { isLoggedIn } = useAuth();
+  const hasShownAuthPopup = useRef(false);
 
   const homestay = homestays.find((h) => h.id === id) || homestays[0];
   const checkIn = searchParams.get("checkin") || "";
@@ -35,7 +38,23 @@ export default function Booking() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
 
+  useEffect(() => {
+    if (isLoggedIn || hasShownAuthPopup.current) {
+      return;
+    }
+
+    hasShownAuthPopup.current = true;
+    window.alert("Please sign in or sign up first.");
+    navigate("/auth?mode=signin", { replace: true });
+  }, [isLoggedIn, navigate]);
+
   const handleProceedToPayment = () => {
+    if (!isLoggedIn) {
+      window.alert("Please sign in or sign up first.");
+      navigate("/auth?mode=signin", { replace: true });
+      return;
+    }
+
     if (!checkIn || !checkOut) {
       toast.error("Please fill check-in and check-out dates.");
       return;

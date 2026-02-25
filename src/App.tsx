@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import TouristDashboard from "./pages/TouristDashboard";
 import HostDashboard from "./pages/HostDashboard";
 import GuideDashboard from "./pages/GuideDashboard";
+import ChefDashboard from "./pages/ChefDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import HomestayListing from "./pages/HomestayListing";
 import HomestayDetail from "./pages/HomestayDetail";
@@ -50,6 +51,7 @@ const App = () => (
             <Route path="/tourist-dashboard" element={<TouristDashboard />} />
             <Route path="/host-dashboard" element={<HostDashboard />} />
             <Route path="/guide-dashboard" element={<GuideDashboard />} />
+            <Route path="/chef-dashboard" element={<ChefDashboard />} />
             <Route path="/admin-dashboard" element={<AdminDashboard />} />
             <Route path="/homestays" element={<HomestayListing />} />
             <Route path="/homestay/:id" element={<HomestayDetail />} />

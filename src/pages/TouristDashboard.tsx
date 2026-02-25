@@ -154,6 +154,11 @@ export default function TouristDashboard() {
     toast.success("No problem. You can write a blog later anytime.");
   };
 
+  const openAttractionInMaps = (name: string, locationName: string) => {
+    const query = encodeURIComponent(`${name}, ${locationName}`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -309,7 +314,8 @@ export default function TouristDashboard() {
                       <img
                         src={attr.image}
                         alt={attr.name}
-                        className="w-full h-40 object-cover"
+                        className="w-full h-40 object-cover cursor-pointer"
+                        onClick={() => openAttractionInMaps(attr.name, attr.location)}
                         onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=400&q=80"; }}
                       />
                       <div className="p-4">
@@ -335,7 +341,8 @@ export default function TouristDashboard() {
                     <img
                       src={attr.image}
                       alt={attr.name}
-                      className="w-full h-44 object-cover"
+                      className="w-full h-44 object-cover cursor-pointer"
+                      onClick={() => openAttractionInMaps(attr.name, attr.location)}
                       onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600&q=80"; }}
                     />
                     <div className="p-4">

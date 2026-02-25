@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Home, ArrowLeft, User, Building, Map, Shield } from "lucide-react";
+import { Eye, EyeOff, Home, ArrowLeft, User, Building, Map, ChefHat, Shield } from "lucide-react";
 import heroImg from "@/assets/hero-bg.jpg";
 import { useAuth, UserRole } from "@/contexts/AuthContext";
 
@@ -29,6 +29,15 @@ const roles = [
     icon: Map,
     desc: "Share local knowledge & guide",
     emoji: "🧭",
+    color: "border-border bg-muted text-foreground",
+    activeColor: "border-primary bg-primary/10 text-primary",
+  },
+  {
+    id: "chef" as UserRole,
+    label: "Chef",
+    icon: ChefHat,
+    desc: "Cook for guest stays",
+    emoji: "👨‍🍳",
     color: "border-border bg-muted text-foreground",
     activeColor: "border-primary bg-primary/10 text-primary",
   },
@@ -67,7 +76,7 @@ export default function Auth() {
     const roleParam = searchParams.get("role");
     if (!roleParam) return;
 
-    const allowedRoles: UserRole[] = isSignup ? ["tourist", "host", "guide"] : ["tourist", "host", "guide", "admin"];
+    const allowedRoles: UserRole[] = isSignup ? ["tourist", "host", "guide", "chef"] : ["tourist", "host", "guide", "chef", "admin"];
     if (allowedRoles.includes(roleParam as UserRole)) {
       setSelectedRole(roleParam as UserRole);
     }
@@ -84,6 +93,7 @@ export default function Auth() {
       switch (user.role) {
         case "host": navigate("/host-dashboard"); break;
         case "guide": navigate("/guide-dashboard"); break;
+        case "chef": navigate("/chef-dashboard"); break;
         case "admin": navigate("/admin-dashboard"); break;
         default: navigate("/tourist-dashboard");
       }

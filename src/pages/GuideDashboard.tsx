@@ -93,6 +93,11 @@ export default function GuideDashboard() {
     toast.success("Guide profile updated.");
   };
 
+  const openAttractionInMaps = (name: string, locationName: string) => {
+    const query = encodeURIComponent(`${name}, ${locationName}`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
+  };
+
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get("tab");
     if (tab && validTabs.includes(tab)) {
@@ -425,7 +430,8 @@ export default function GuideDashboard() {
                     <img
                       src={attr.image}
                       alt={attr.name}
-                      className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
+                      className="w-20 h-20 rounded-xl object-cover flex-shrink-0 cursor-pointer"
+                      onClick={() => openAttractionInMaps(attr.name, attr.location)}
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=200&q=80";
                       }}

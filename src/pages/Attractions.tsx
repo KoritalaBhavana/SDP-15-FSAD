@@ -4,6 +4,11 @@ import { attractions } from "@/lib/mockData";
 import { Star, MapPin, Clock, Ticket, Bookmark } from "lucide-react";
 
 export default function Attractions() {
+  const openAttractionInMaps = (name: string, locationName: string) => {
+    const query = encodeURIComponent(`${name}, ${locationName}`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
@@ -20,7 +25,8 @@ export default function Attractions() {
                   <img
                     src={attr.image}
                     alt={attr.name}
-                    className="w-full md:w-48 h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                    className="w-full md:w-48 h-48 object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                    onClick={() => openAttractionInMaps(attr.name, attr.location)}
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600&q=80";
                     }}

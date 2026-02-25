@@ -11,6 +11,11 @@ import { toast } from "sonner";
 export default function Index() {
   const navigate = useNavigate();
 
+  const openAttractionInMaps = (name: string, locationName: string) => {
+    const query = encodeURIComponent(`${name}, ${locationName}`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
+  };
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   };
@@ -212,7 +217,11 @@ export default function Index() {
                 <img
                   src={attr.image}
                   alt={attr.name}
-                  className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="w-full h-44 object-cover group-hover:scale-105 transition-transform duration-500 cursor-pointer"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    openAttractionInMaps(attr.name, attr.location);
+                  }}
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600&q=80";
                   }}
