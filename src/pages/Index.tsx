@@ -5,11 +5,13 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { Star, ChevronRight, TrendingUp, Map, Shield, Award, UtensilsCrossed, ChefHat } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { homestays, categories, trendingDestinations, reviews, guides, attractions, restaurants, chefs } from "@/lib/mockData";
+import { categories, trendingDestinations, reviews, guides, attractions, restaurants, chefs } from "@/lib/mockData";
+import { useHomestays } from "@/hooks/useHomestays";
 import { toast } from "sonner";
 
 export default function Index() {
   const navigate = useNavigate();
+  const homestays = useHomestays();
 
   const openAttractionInMaps = (name: string, locationName: string) => {
     const query = encodeURIComponent(`${name}, ${locationName}`);

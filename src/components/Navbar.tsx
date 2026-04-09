@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { Menu, X, MapPin, Heart, Bell, User, LogOut, ChevronDown, Home } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { DEFAULT_AVATAR, getAvatarSrc } from "@/lib/avatar";
 
 export default function Navbar() {
   const { user, isLoggedIn, logout } = useAuth();
@@ -111,9 +112,12 @@ export default function Navbar() {
                     className="flex items-center gap-2 hover:bg-muted rounded-xl px-3 py-2 transition-colors"
                   >
                     <img
-                      src={user?.avatar}
+                      src={getAvatarSrc(user?.avatar)}
                       alt={user?.name}
                       className="w-7 h-7 rounded-full object-cover border-2 border-primary/30"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR;
+                      }}
                     />
                     <span className="text-sm font-medium text-foreground max-w-[100px] truncate">{user?.name}</span>
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />

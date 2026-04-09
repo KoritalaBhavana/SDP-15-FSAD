@@ -5,8 +5,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
+import Auth from "./pages/AuthV2";
 import TouristDashboard from "./pages/TouristDashboard";
 import HostDashboard from "./pages/HostDashboard";
 import GuideDashboard from "./pages/GuideDashboard";
@@ -14,8 +15,8 @@ import ChefDashboard from "./pages/ChefDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import HomestayListing from "./pages/HomestayListing";
 import HomestayDetail from "./pages/HomestayDetail";
-import Booking from "./pages/Booking";
-import Payment from "./pages/Payment";
+import Booking from "./pages/BookingV2";
+import Payment from "./pages/PaymentV2";
 import Attractions from "./pages/Attractions";
 import Guides from "./pages/Guides";
 import Dining from "./pages/Dining";
@@ -48,11 +49,11 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/tourist-dashboard" element={<TouristDashboard />} />
-            <Route path="/host-dashboard" element={<HostDashboard />} />
-            <Route path="/guide-dashboard" element={<GuideDashboard />} />
-            <Route path="/chef-dashboard" element={<ChefDashboard />} />
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
+            <Route path="/tourist-dashboard" element={<ProtectedRoute allowedRoles={["tourist"]}><TouristDashboard /></ProtectedRoute>} />
+            <Route path="/host-dashboard" element={<ProtectedRoute allowedRoles={["host"]}><HostDashboard /></ProtectedRoute>} />
+            <Route path="/guide-dashboard" element={<ProtectedRoute allowedRoles={["guide"]}><GuideDashboard /></ProtectedRoute>} />
+            <Route path="/chef-dashboard" element={<ProtectedRoute allowedRoles={["chef"]}><ChefDashboard /></ProtectedRoute>} />
+            <Route path="/admin-dashboard" element={<ProtectedRoute allowedRoles={["admin"]}><AdminDashboard /></ProtectedRoute>} />
             <Route path="/homestays" element={<HomestayListing />} />
             <Route path="/homestay/:id" element={<HomestayDetail />} />
             <Route path="/booking/:id" element={<Booking />} />

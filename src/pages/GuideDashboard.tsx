@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { guides, attractions as initialAttractions } from "@/lib/mockData";
+import { attractionsApi, guideBookingsApi, itinerariesApi } from "@/lib/api";
+import { DEFAULT_AVATAR, getAvatarSrc } from "@/lib/avatar";
 import { toast } from "sonner";
 import { Star, MapPin, MessageSquare, Calendar, BookOpen, Camera, TrendingUp } from "lucide-react";
 
@@ -113,6 +115,62 @@ export default function GuideDashboard() {
     setGuideAvatar(user?.avatar || myGuideProfile.image);
     setGuideAbout(myGuideProfile.about);
   }, [myGuideProfile.about, myGuideProfile.image, myGuideProfile.name, user]);
+
+  useEffect(() => {
+    const loadGuideData = async () => {
+      if (!user?.id) {
+        return;
+      }
+      try {
+        const [apiItineraries, apiAttractions, apiBookings] = await Promise.all([
+          itinerariesApi.getByGuide(Number(user.id)),
+          attractionsApi.getByGuide(Number(user.id)),
+          guideBookingsApi.getByGuide(Number(user.id)),
+        ]);
+
+        if (Array.isArray(apiItineraries) && apiItineraries.length > 0) {
+          setItineraries(apiItineraries.map((item: any) => ({
+            id: String(item.id),
+            title: item.title,
+            days: item.durationDays || 1,
+            places: String(item.places || "").split(",").length,
+            rating: 4.8,
+            views: 0,
+          })));
+        }
+
+        if (Array.isArray(apiAttractions) && apiAttractions.length > 0) {
+          setGuideAttractions(apiAttractions.map((item: any) => ({
+            id: String(item.id),
+            name: item.name,
+            location: item.location || item.city,
+            image: item.imageUrl,
+            rating: Number(item.rating || 0),
+            entryFee: Number(item.entryFee || 0),
+            bestTime: item.bestTime || "Anytime",
+            distance: `${item.distanceKm || 0} km`,
+            description: item.description,
+            category: item.category || "General",
+          })));
+        }
+
+        if (Array.isArray(apiBookings) && apiBookings.length > 0) {
+          setBookingRequests(apiBookings.map((item: any) => ({
+            id: String(item.id),
+            tourist: `Tourist #${item.touristId}`,
+            dates: item.bookingDate,
+            activity: item.activityType || "Guided Tour",
+            amount: Number(item.totalAmount || 0),
+            status: item.status || "Pending",
+          })));
+        }
+      } catch {
+        // Keep local data if backend API is unavailable.
+      }
+    };
+
+    loadGuideData();
+  }, [user?.id]);
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -249,9 +307,10 @@ export default function GuideDashboard() {
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
               <img
-                src={user?.avatar || myGuideProfile.image}
+                src={getAvatarSrc(user?.avatar, guideAvatar, myGuideProfile.image)}
                 alt=""
                 className="w-14 h-14 rounded-2xl object-cover border-2 border-primary/30"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
               />
               <div className="flex-1">
                 <h1 className="text-xl font-bold text-foreground">Guide Dashboard 🧭</h1>
@@ -308,9 +367,10 @@ export default function GuideDashboard() {
               <div className="card-travel p-6">
                 <div className="flex items-start gap-5">
                   <img
-                    src={user?.avatar || guideAvatar || myGuideProfile.image}
+                    src={getAvatarSrc(user?.avatar, guideAvatar, myGuideProfile.image)}
                     alt={myGuideProfile.name}
                     className="w-20 h-20 rounded-2xl object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
                   />
                   <div className="flex-1">
                     <div className="flex items-start justify-between">

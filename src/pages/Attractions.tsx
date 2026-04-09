@@ -2,11 +2,37 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { attractions } from "@/lib/mockData";
 import { Star, MapPin, Clock, Ticket, Bookmark } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { loadSavedItineraryIds, toggleSavedAttraction } from "@/lib/travelPreferences";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 export default function Attractions() {
+  const { user } = useAuth();
+  const [savedAttractionIds, setSavedAttractionIds] = useState<number[]>([]);
+
+  useEffect(() => {
+    if (!user?.id || user.role !== "tourist") {
+      setSavedAttractionIds([]);
+      return;
+    }
+    setSavedAttractionIds(loadSavedItineraryIds(Number(user.id)));
+  }, [user?.id, user?.role]);
+
   const openAttractionInMaps = (name: string, locationName: string) => {
     const query = encodeURIComponent(`${name}, ${locationName}`);
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, "_blank", "noopener,noreferrer");
+  };
+
+  const handleToggleItinerary = (attractionId: number) => {
+    if (!user?.id || user.role !== "tourist") {
+      toast.error("Sign in as a tourist to save attractions.");
+      return;
+    }
+
+    const result = toggleSavedAttraction(Number(user.id), attractionId);
+    setSavedAttractionIds(result.ids);
+    toast.success(result.saved ? "Saved to itinerary." : "Removed from itinerary.");
   };
 
   return (
@@ -19,7 +45,10 @@ export default function Attractions() {
         </div>
         <div className="max-w-7xl mx-auto px-4 md:px-6 py-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[...attractions, ...attractions].map((attr, i) => (
+            {[...attractions, ...attractions].map((attr, i) => {
+              const attractionId = Number(attr.id) + i * 1000;
+              const isSaved = savedAttractionIds.includes(attractionId);
+              return (
               <div key={i} className="card-travel group overflow-hidden flex flex-col md:flex-row">
                 <div className="relative overflow-hidden md:w-48 flex-shrink-0">
                   <img
@@ -39,7 +68,7 @@ export default function Attractions() {
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-bold text-foreground text-lg leading-tight">{attr.name}</h3>
                     <button className="p-1.5 hover:bg-muted rounded-lg transition-colors flex-shrink-0">
-                      <Bookmark className="h-4 w-4 text-muted-foreground" />
+                      <Bookmark className={`h-4 w-4 ${isSaved ? "fill-primary text-primary" : "text-muted-foreground"}`} />
                     </button>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{attr.description}</p>
@@ -49,10 +78,15 @@ export default function Attractions() {
                     <div className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />Best: {attr.bestTime}</div>
                     <div className="flex items-center gap-1"><Ticket className="h-3.5 w-3.5" />{attr.entryFee === 0 ? "Free Entry" : `₹${attr.entryFee}`}</div>
                   </div>
-                  <button className="mt-4 btn-outline-primary text-xs py-1.5 px-4">Save to Itinerary</button>
+                  <button
+                    onClick={() => handleToggleItinerary(attractionId)}
+                    className={`mt-4 text-xs py-1.5 px-4 ${isSaved ? "btn-primary" : "btn-outline-primary"}`}
+                  >
+                    {isSaved ? "Saved to Itinerary" : "Save to Itinerary"}
+                  </button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         </div>
       </div>

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { homestays } from "@/lib/mockData";
+import { useHomestays } from "@/hooks/useHomestays";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   Star, MapPin, Heart, Share2, ChevronLeft, ChevronRight,
@@ -10,6 +10,7 @@ import {
   CheckCircle, X as XIcon
 } from "lucide-react";
 import { toast } from "sonner";
+import { loadWishlistIds, toggleWishlist } from "@/lib/travelPreferences";
 
 const amenityIcons: Record<string, React.ReactNode> = {
   WiFi: <Wifi className="h-5 w-5" />,
@@ -23,6 +24,7 @@ export default function HomestayDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isLoggedIn, user } = useAuth();
+  const homestays = useHomestays();
   const homestay = homestays.find((h) => h.id === id) || homestays[0];
   const [imgIdx, setImgIdx] = useState(0);
   const [wishlisted, setWishlisted] = useState(false);
@@ -46,6 +48,19 @@ export default function HomestayDetail() {
   const subtotal = nights * homestay.price;
   const taxes = Math.round(subtotal * 0.12);
   const total = subtotal + taxes;
+
+  useEffect(() => {
+    const syncWishlist = async () => {
+      if (!user?.id || user.role !== "tourist") {
+        setWishlisted(false);
+        return;
+      }
+      const ids = await loadWishlistIds(Number(user.id));
+      setWishlisted(ids.includes(Number(homestay.id)));
+    };
+
+    void syncWishlist();
+  }, [homestay.id, user?.id, user?.role]);
 
   const handleContactHost = () => {
     if (!isLoggedIn) {
@@ -74,6 +89,17 @@ export default function HomestayDetail() {
     }
 
     navigate(`/booking/${homestay.id}?checkin=${checkIn}&checkout=${checkOut}&guests=${guests}`);
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!user?.id || user.role !== "tourist") {
+      toast.error("Sign in as a tourist to use your wishlist.");
+      return;
+    }
+
+    const result = await toggleWishlist(Number(user.id), Number(homestay.id));
+    setWishlisted(result.wishlisted);
+    toast.success(result.wishlisted ? "Added to wishlist." : "Removed from wishlist.");
   };
 
   return (
@@ -123,7 +149,7 @@ export default function HomestayDetail() {
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
                     <button
-                      onClick={() => setWishlisted(!wishlisted)}
+                      onClick={handleWishlistToggle}
                       className="p-2.5 border border-border rounded-xl hover:bg-muted transition-colors"
                     >
                       <Heart className={`h-5 w-5 ${wishlisted ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />

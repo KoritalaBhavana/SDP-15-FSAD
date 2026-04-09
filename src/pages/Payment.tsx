@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { homestays } from "@/lib/mockData";
+import { useHomestays } from "@/hooks/useHomestays";
 import { Shield, CheckCircle, CreditCard, Smartphone, Building2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +19,7 @@ export default function Payment() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isLoggedIn } = useAuth();
+  const homestays = useHomestays();
   const homestay = homestays.find((h) => h.id === id) || homestays[0];
 
   const amount = Number(searchParams.get("amount")) || homestay.price * 2;

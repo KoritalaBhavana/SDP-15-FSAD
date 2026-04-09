@@ -4,8 +4,20 @@ import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { chefs } from "@/lib/mockData";
-import { Calendar, ChefHat, Clock, Settings, Star, TrendingUp, User } from "lucide-react";
+import { diningBookingsApi, reviewsApi } from "@/lib/api";
+import { DEFAULT_AVATAR, getAvatarSrc } from "@/lib/avatar";
+import { Calendar, ChefHat, Clock, MessageSquare, Settings, Star, TrendingUp, User } from "lucide-react";
 import { toast } from "sonner";
+
+type ChefBookingStatus = "Pending" | "Confirmed" | "Rejected";
+
+type ChefReview = {
+  id: string;
+  guest: string;
+  rating: number;
+  comment: string;
+  reply?: string;
+};
 
 export default function ChefDashboard() {
   const { user, updateProfile } = useAuth();
@@ -16,15 +28,28 @@ export default function ChefDashboard() {
   const [chefName, setChefName] = useState(user?.name || chefs[0].name);
   const [chefEmail, setChefEmail] = useState(user?.email || "");
   const [chefAvatar, setChefAvatar] = useState(user?.avatar || chefs[0].image);
+  const [activeReplyReviewId, setActiveReplyReviewId] = useState<string | null>(null);
+  const [replyTextByReviewId, setReplyTextByReviewId] = useState<Record<string, string>>({});
 
   const [chefBookings, setChefBookings] = useState([
-    { id: "cb1", guest: "Riya Sharma", homestay: "Mountain Dew Cottage", date: "Feb 28, 2026", meal: "Dinner", status: "Pending" as "Pending" | "Confirmed" | "Rejected", amount: 1800 },
-    { id: "cb2", guest: "Arjun Menon", homestay: "Kerala Heritage Home", date: "Mar 02, 2026", meal: "Lunch", status: "Confirmed" as "Pending" | "Confirmed" | "Rejected", amount: 1500 },
+    { id: "cb1", guest: "Riya Sharma", homestay: "Mountain Dew Cottage", date: "Feb 28, 2026", meal: "Dinner", status: "Pending" as ChefBookingStatus, amount: 1800 },
+    { id: "cb2", guest: "Arjun Menon", homestay: "Kerala Heritage Home", date: "Mar 02, 2026", meal: "Lunch", status: "Confirmed" as ChefBookingStatus, amount: 1500 },
   ]);
+  const [chefReviews, setChefReviews] = useState<ChefReview[]>([
+    { id: "cr1", guest: "Riya Sharma", rating: 5, comment: "Dinner was excellent and beautifully presented." },
+    { id: "cr2", guest: "Arjun Menon", rating: 4, comment: "Great flavors and on-time service.", reply: "Thank you. I would love to cook for you again." },
+  ]);
+
+  const normalizeBookingStatus = (status: string | undefined): ChefBookingStatus => {
+    const normalized = String(status || "Pending").trim().toUpperCase();
+    if (normalized === "CONFIRMED") return "Confirmed";
+    if (normalized === "REJECTED") return "Rejected";
+    return "Pending";
+  };
 
   useEffect(() => {
     const tab = new URLSearchParams(location.search).get("tab");
-    const allowedTabs = new Set(["overview", "bookings", "profile"]);
+    const allowedTabs = new Set(["overview", "bookings", "reviews", "profile"]);
 
     if (tab && allowedTabs.has(tab)) {
       setActiveTab(tab);
@@ -35,7 +60,7 @@ export default function ChefDashboard() {
   }, [location.search]);
 
   const handleTabChange = (tabId: string) => {
-    const allowedTabs = new Set(["overview", "bookings", "profile"]);
+    const allowedTabs = new Set(["overview", "bookings", "reviews", "profile"]);
     if (!allowedTabs.has(tabId)) {
       return;
     }
@@ -54,6 +79,56 @@ export default function ChefDashboard() {
     setChefAvatar(user?.avatar || chefs[0].image);
   }, [user]);
 
+  useEffect(() => {
+    const loadChefBookings = async () => {
+      if (!user?.id) {
+        return;
+      }
+      try {
+        const apiBookings = await diningBookingsApi.getByChef(Number(user.id));
+        if (Array.isArray(apiBookings) && apiBookings.length > 0) {
+          setChefBookings(apiBookings.map((item: any) => ({
+            id: String(item.id),
+            guest: `Tourist #${item.touristId}`,
+            homestay: item.restaurantName || "TravelNest Dining",
+            date: item.bookingDate,
+            meal: item.bookingTime || "Meal",
+            status: normalizeBookingStatus(item.status),
+            amount: Number(item.totalAmount || 0),
+          })));
+        }
+      } catch {
+        // Keep local data if backend API is unavailable.
+      }
+    };
+
+    loadChefBookings();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const loadChefReviews = async () => {
+      if (!user?.id) {
+        return;
+      }
+      try {
+        const apiReviews = await reviewsApi.getByTarget("CHEF", Number(user.id));
+        if (Array.isArray(apiReviews) && apiReviews.length > 0) {
+          setChefReviews(apiReviews.map((review: any) => ({
+            id: String(review.id),
+            guest: `Tourist #${review.userId}`,
+            rating: Number(review.rating || 0),
+            comment: review.comment || "",
+            reply: review.reply || "",
+          })));
+        }
+      } catch {
+        // Keep local data if backend API is unavailable.
+      }
+    };
+
+    loadChefReviews();
+  }, [user?.id]);
+
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -70,14 +145,41 @@ export default function ChefDashboard() {
     toast.success("Chef profile updated.");
   };
 
-  const handleBookingStatus = (bookingId: string, status: "Confirmed" | "Rejected") => {
-    setChefBookings((prev) => prev.map((booking) => (booking.id === bookingId ? { ...booking, status } : booking)));
-    toast.success(status === "Confirmed" ? "Booking request accepted." : "Booking request rejected.");
+  const handleBookingStatus = async (bookingId: string, status: "Confirmed" | "Rejected") => {
+    try {
+      await diningBookingsApi.updateStatus(Number(bookingId), status.toUpperCase());
+      setChefBookings((prev) => prev.map((booking) => (booking.id === bookingId ? { ...booking, status } : booking)));
+      toast.success(status === "Confirmed" ? "Booking request accepted." : "Booking request rejected.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update booking status.");
+    }
+  };
+
+  const handleReplySubmit = async (reviewId: string) => {
+    const reply = (replyTextByReviewId[reviewId] || "").trim();
+    if (!reply) {
+      toast.error("Please type a reply first.");
+      return;
+    }
+
+    try {
+      await reviewsApi.reply(Number(reviewId), reply);
+    } catch {
+      // Keep local reply fallback if backend has no chef reviews yet.
+    }
+
+    setChefReviews((prev) => prev.map((review) => (review.id === reviewId ? { ...review, reply } : review)));
+    setReplyTextByReviewId((prev) => ({ ...prev, [reviewId]: "" }));
+    setActiveReplyReviewId(null);
+    toast.success("Reply sent.");
   };
 
   const pendingBookings = chefBookings.filter((booking) => booking.status === "Pending").length;
   const confirmedBookings = chefBookings.filter((booking) => booking.status === "Confirmed").length;
   const monthlyEarnings = chefBookings.filter((booking) => booking.status === "Confirmed").reduce((sum, booking) => sum + booking.amount, 0);
+  const averageRating = chefReviews.length > 0
+    ? (chefReviews.reduce((sum, review) => sum + review.rating, 0) / chefReviews.length).toFixed(1)
+    : "0.0";
 
   return (
     <div className="min-h-screen bg-background">
@@ -86,7 +188,7 @@ export default function ChefDashboard() {
         <div className="bg-card border-b border-border px-4 md:px-6 py-6">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center gap-4 mb-6">
-              <img src={chefAvatar || "https://i.pravatar.cc/150"} alt={chefName} className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30" />
+              <img src={getAvatarSrc(chefAvatar)} alt={chefName} className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30" onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }} />
               <div>
                 <h1 className="text-xl font-bold text-foreground">Chef Dashboard 👨‍🍳</h1>
                 <p className="text-muted-foreground text-sm">Manage your meal bookings and profile</p>
@@ -97,6 +199,7 @@ export default function ChefDashboard() {
               {[
                 { id: "overview", label: "Overview" },
                 { id: "bookings", label: "Bookings" },
+                { id: "reviews", label: "Reviews" },
                 { id: "profile", label: "Profile" },
               ].map((tab) => (
                 <button
@@ -145,7 +248,9 @@ export default function ChefDashboard() {
                 <h2 className="text-lg font-bold text-foreground mb-4">Your Chef Highlights</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Available for breakfast, lunch, and dinner</div>
-                  <div className="flex items-center gap-2 text-muted-foreground"><Star className="h-4 w-4 text-accent" /> 4.8 average guest rating</div>
+                  <button type="button" onClick={() => handleTabChange("reviews")} className="flex items-center gap-2 text-left text-muted-foreground hover:text-foreground">
+                    <Star className="h-4 w-4 text-accent" /> {averageRating} average guest rating
+                  </button>
                 </div>
               </div>
             </div>
@@ -179,15 +284,85 @@ export default function ChefDashboard() {
             </div>
           )}
 
+          {activeTab === "reviews" && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-foreground">Ratings & Replies</h2>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Star className="h-4 w-4 text-accent" />
+                  <span>{averageRating} average rating</span>
+                </div>
+              </div>
+              <div className="space-y-4">
+                {chefReviews.map((review) => (
+                  <div key={review.id} className="card-travel p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-foreground text-sm">{review.guest}</p>
+                        <div className="flex items-center gap-1 mt-1">
+                          {Array.from({ length: 5 }).map((_, index) => (
+                            <Star
+                              key={index}
+                              className={`h-4 w-4 ${index < review.rating ? "fill-accent text-accent" : "text-muted-foreground/30"}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setActiveReplyReviewId(activeReplyReviewId === review.id ? null : review.id)}
+                        className="btn-outline-primary text-xs py-1.5 px-3"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" /> Reply
+                      </button>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-3">{review.comment}</p>
+                    {review.reply && (
+                      <div className="mt-3 rounded-xl bg-primary/5 border border-primary/15 px-3 py-2">
+                        <p className="text-xs font-semibold text-primary">Your Reply</p>
+                        <p className="text-sm text-foreground mt-1">{review.reply}</p>
+                      </div>
+                    )}
+                    {activeReplyReviewId === review.id && (
+                      <div className="mt-3 space-y-2">
+                        <textarea
+                          value={replyTextByReviewId[review.id] || ""}
+                          onChange={(e) => setReplyTextByReviewId((prev) => ({ ...prev, [review.id]: e.target.value }))}
+                          className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          rows={3}
+                          placeholder="Write your reply to this guest..."
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button type="button" onClick={() => setActiveReplyReviewId(null)} className="btn-outline-primary text-xs py-1.5 px-3">
+                            Cancel
+                          </button>
+                          <button type="button" onClick={() => void handleReplySubmit(review.id)} className="btn-primary text-xs py-1.5 px-3">
+                            Send Reply
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {chefReviews.length === 0 && (
+                  <div className="card-travel p-6 text-center text-muted-foreground">
+                    No ratings yet. Guest reviews for chefs will appear here.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === "profile" && (
             <div>
               <h2 className="text-xl font-bold text-foreground mb-6">Profile Settings</h2>
               <div className="card-travel p-6 max-w-xl">
                 <div className="flex items-center gap-4 mb-4">
                   <img
-                    src={chefAvatar || "https://i.pravatar.cc/150"}
+                    src={getAvatarSrc(chefAvatar)}
                     alt="Chef"
                     className="w-16 h-16 rounded-2xl object-cover border border-border"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
                   />
                   <label className="btn-outline-primary text-sm py-1.5 px-3 cursor-pointer">
                     Change Photo

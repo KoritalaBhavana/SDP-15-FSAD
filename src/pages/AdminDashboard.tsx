@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { homestays, guides, chefs } from "@/lib/mockData";
+import { usersApi } from "@/lib/api";
+import { DEFAULT_AVATAR, getAvatarSrc } from "@/lib/avatar";
 import { toast } from "sonner";
 import { Users, Building, Map, Calendar, UserCheck, Shield } from "lucide-react";
 
@@ -21,6 +23,16 @@ type Candidate = {
   resumeFile: string;
 };
 
+type DashboardUser = {
+  id: string;
+  name: string;
+  role: "tourist" | "host" | "guide" | "chef";
+  email: string;
+  city: string;
+  status: string;
+  backendId?: number;
+};
+
 export default function AdminDashboard() {
   const { user, updateProfile } = useAuth();
   const location = useLocation();
@@ -32,7 +44,7 @@ export default function AdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState<"all" | "tourist" | "host" | "guide" | "chef">("all");
   const [candidateFilter, setCandidateFilter] = useState<"all" | "pending" | "interviewed" | "appointed">("all");
   const [pendingDecision, setPendingDecision] = useState<{ candidateId: string; action: "appoint" | "reject" } | null>(null);
-  const [users, setUsers] = useState([
+  const [users, setUsers] = useState<DashboardUser[]>([
     { id: "u1", name: "Riya Sharma", role: "tourist", email: "riya@example.com", city: "Delhi", status: "Active" },
     { id: "u2", name: "Arun Singh", role: "host", email: "arun.host@example.com", city: "Manali", status: "Active" },
     { id: "u3", name: "Neha Das", role: "guide", email: "neha.guide@example.com", city: "Shillong", status: "Pending" },
@@ -55,14 +67,43 @@ export default function AdminDashboard() {
   const guidesCount = guides.length;
   const chefsCount = chefs.length;
 
+  const [stats, setStats] = useState<{ tourists: number; hosts: number; guides: number; chefs: number; pendingInterviews: number }>({
+    tourists: touristsCount,
+    hosts: hostsCount,
+    guides: guidesCount,
+    chefs: chefsCount,
+    pendingInterviews: 0,
+  });
+
   const pendingInterviews = candidates.filter((candidate) => candidate.status === "applied" || candidate.status === "interview_scheduled").length;
   const appointedCount = candidates.filter((candidate) => candidate.status === "appointed").length;
 
   const visibleUsers = users.filter((entry) => userRoleFilter === "all" || entry.role === userRoleFilter);
+  const isPendingStatus = (status: string) => status.trim().toUpperCase() === "PENDING";
+  const statusLabel = (status: string) => {
+    const normalized = status.trim().toUpperCase();
+    if (normalized === "APPROVED") return "Approved";
+    if (normalized === "REJECTED") return "Rejected";
+    if (normalized === "ACTIVE") return "Approved";
+    return "Pending";
+  };
 
-  const handleUserDecision = (userId: string, status: "Active" | "Rejected") => {
-    setUsers((prev) => prev.map((entry) => (entry.id === userId ? { ...entry, status } : entry)));
-    toast.success(status === "Active" ? "User request approved." : "User request rejected.");
+  const handleUserDecision = async (userId: string, status: "APPROVED" | "REJECTED") => {
+    const targetUser = users.find((entry) => entry.id === userId);
+    if (!targetUser) {
+      toast.error("User not found.");
+      return;
+    }
+
+    try {
+      if (targetUser.backendId) {
+        await usersApi.updateStatus(targetUser.backendId, status);
+      }
+      setUsers((prev) => prev.map((entry) => (entry.id === userId ? { ...entry, status } : entry)));
+      toast.success(status === "APPROVED" ? "User request approved." : "User request rejected.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Could not update user status.");
+    }
   };
 
   const visibleCandidates = candidates.filter((candidate) => {
@@ -93,6 +134,49 @@ export default function AdminDashboard() {
     setAdminEmail(user?.email || "");
     setAdminAvatar(user?.avatar || "");
   }, [user]);
+
+  useEffect(() => {
+    const loadAdminData = async () => {
+      try {
+        const [apiStats, pendingUsers] = await Promise.all([
+          usersApi.getStats(),
+          usersApi.getPending(),
+        ]);
+
+        if (apiStats) {
+          setStats({
+            tourists: Number(apiStats.tourists || touristsCount),
+            hosts: Number(apiStats.hosts || hostsCount),
+            guides: Number(apiStats.guides || guidesCount),
+            chefs: Number(apiStats.chefs || chefsCount),
+            pendingInterviews: Number(apiStats.pendingInterviews || 0),
+          });
+        }
+
+        if (Array.isArray(pendingUsers) && pendingUsers.length > 0) {
+          setUsers((prev) => {
+            const existingNonApi = prev.filter((entry) => !entry.id.startsWith("api-"));
+            return [
+              ...pendingUsers.map((entry: any) => ({
+                id: `api-${entry.id}`,
+                backendId: Number(entry.id),
+                name: entry.name,
+                role: String(entry.role || "tourist").toLowerCase(),
+                email: entry.email,
+                city: entry.location || "-",
+                status: entry.status || "PENDING",
+              })),
+              ...existingNonApi,
+            ];
+          });
+        }
+      } catch {
+        // Keep local admin mock data when backend is unavailable.
+      }
+    };
+
+    loadAdminData();
+  }, [touristsCount, hostsCount, guidesCount, chefsCount]);
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -198,7 +282,7 @@ export default function AdminDashboard() {
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <img src={user?.avatar || "https://i.pravatar.cc/150"} alt="" className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30" />
+                <img src={getAvatarSrc(user?.avatar)} alt="" className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30" onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }} />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">Admin Dashboard 🛡️</h1>
                   <p className="text-muted-foreground text-sm">Manage users, interviews, and appointments</p>
@@ -237,11 +321,11 @@ export default function AdminDashboard() {
             <div className="space-y-8">
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 {[
-                  { label: "Tourists", value: touristsCount.toLocaleString(), icon: <Users className="h-5 w-5" /> },
-                  { label: "Homestay Hosts", value: hostsCount.toString(), icon: <Building className="h-5 w-5" /> },
-                  { label: "Guides", value: guidesCount.toString(), icon: <Map className="h-5 w-5" /> },
-                  { label: "Chefs", value: chefsCount.toString(), icon: <Shield className="h-5 w-5" /> },
-                  { label: "Pending Interviews", value: pendingInterviews.toString(), icon: <Calendar className="h-5 w-5" /> },
+                  { label: "Tourists", value: stats.tourists.toLocaleString(), icon: <Users className="h-5 w-5" /> },
+                  { label: "Homestay Hosts", value: stats.hosts.toString(), icon: <Building className="h-5 w-5" /> },
+                  { label: "Guides", value: stats.guides.toString(), icon: <Map className="h-5 w-5" /> },
+                  { label: "Chefs", value: stats.chefs.toString(), icon: <Shield className="h-5 w-5" /> },
+                  { label: "Pending Interviews", value: stats.pendingInterviews.toString(), icon: <Calendar className="h-5 w-5" /> },
                   { label: "Appointed", value: appointedCount.toString(), icon: <UserCheck className="h-5 w-5" /> },
                 ].map((stat) => (
                   <button
@@ -300,19 +384,19 @@ export default function AdminDashboard() {
                     </div>
                     <div className="text-right">
                       <p className="text-xs capitalize text-muted-foreground">{entry.role}</p>
-                      <span className={`text-xs px-2 py-1 rounded-full ${entry.status === "Active" ? "bg-green-100 text-green-700" : entry.status === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-destructive"}`}>
-                        {entry.status}
+                      <span className={`text-xs px-2 py-1 rounded-full ${statusLabel(entry.status) === "Approved" ? "bg-green-100 text-green-700" : statusLabel(entry.status) === "Pending" ? "bg-yellow-100 text-yellow-700" : "bg-red-100 text-destructive"}`}>
+                        {statusLabel(entry.status)}
                       </span>
-                      {entry.status === "Pending" && (
+                      {isPendingStatus(entry.status) && (
                         <div className="flex gap-2 mt-2 justify-end">
                           <button
-                            onClick={() => handleUserDecision(entry.id, "Active")}
+                            onClick={() => void handleUserDecision(entry.id, "APPROVED")}
                             className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-lg hover:bg-green-200 transition-colors"
                           >
                             Approve
                           </button>
                           <button
-                            onClick={() => handleUserDecision(entry.id, "Rejected")}
+                            onClick={() => void handleUserDecision(entry.id, "REJECTED")}
                             className="text-xs bg-red-100 text-destructive px-2.5 py-1 rounded-lg hover:bg-red-200 transition-colors"
                           >
                             Reject
@@ -409,9 +493,10 @@ export default function AdminDashboard() {
               <div className="card-travel p-6 max-w-xl">
                 <div className="flex items-center gap-4 mb-4">
                   <img
-                    src={adminAvatar || "https://i.pravatar.cc/150"}
+                    src={getAvatarSrc(adminAvatar)}
                     alt="Admin"
                     className="w-16 h-16 rounded-2xl object-cover border border-border"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
                   />
                   <label className="btn-outline-primary text-sm py-1.5 px-3 cursor-pointer">
                     Change Photo

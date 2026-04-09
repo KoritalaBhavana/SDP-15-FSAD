@@ -5,9 +5,18 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { toast } from "sonner";
 import {
+  addHostHomestay,
+  deleteHostHomestay,
+  getHostDashboardProperties,
+  toHostDashboardProperty,
+  type HostDashboardProperty,
+} from "@/lib/homestayStore";
+import { homestaysApi, bookingsApi } from "@/lib/api";
+import {
   Plus, Calendar, Star, DollarSign, Home, MessageSquare,
-  CheckCircle, XCircle, Clock, Edit, Eye, TrendingUp
+  CheckCircle, XCircle, Clock, Edit, Eye, TrendingUp, Trash2
 } from "lucide-react";
+import { DEFAULT_AVATAR, getAvatarSrc } from "@/lib/avatar";
 
 export default function HostDashboard() {
   const { user, updateProfile } = useAuth();
@@ -23,18 +32,14 @@ export default function HostDashboard() {
   const [newPropertyName, setNewPropertyName] = useState("");
   const [newPropertyLocation, setNewPropertyLocation] = useState("");
   const [newPropertyPrice, setNewPropertyPrice] = useState(1200);
+  const [newPropertyImage, setNewPropertyImage] = useState("");
 
-  const [properties, setProperties] = useState([
-    { id: "1", name: "Mountain View Cottage", location: "Manali", price: 1200, status: "Active", bookings: 12, rating: 4.8, image: "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=600&q=80" },
-    { id: "2", name: "Garden Guest Room", location: "Shimla", price: 850, status: "Active", bookings: 7, rating: 4.6, image: "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&q=80" },
-  ]);
-
-  const propertyImagePool = [
-    "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=600&q=80",
-    "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&q=80",
-    "https://images.unsplash.com/photo-1480074568708-e7b720bb3f09?w=600&q=80",
-    "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=600&q=80",
+  const seedProperties: HostDashboardProperty[] = [
+    { id: "1", name: "Mountain View Cottage", location: "Manali", price: 1200, status: "Active", bookings: 12, rating: 4.8, image: "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=600&q=80", isHostCreated: false },
+    { id: "2", name: "Garden Guest Room", location: "Shimla", price: 850, status: "Active", bookings: 7, rating: 4.6, image: "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&q=80", isHostCreated: false },
   ];
+
+  const [properties, setProperties] = useState(() => [...getHostDashboardProperties(), ...seedProperties]);
 
   const [bookingRequests, setBookingRequests] = useState([
     { id: "1", guest: "Sneha Patel", dates: "Mar 15-18", guests: 2, property: "Mountain View Cottage", amount: 3600, status: "pending", avatar: "https://i.pravatar.cc/50?img=25" },
@@ -68,30 +73,110 @@ export default function HostDashboard() {
   };
 
   const handleAddProperty = () => {
+    if (!user?.id) {
+      toast.error("Please sign in as a host first.");
+      return;
+    }
+
     if (!newPropertyName.trim() || !newPropertyLocation.trim()) {
       toast.error("Please fill property name and location.");
       return;
     }
 
-    const randomImage = propertyImagePool[Math.floor(Math.random() * propertyImagePool.length)];
+    const saveProperty = async () => {
+      try {
+        const locationParts = newPropertyLocation.split(",").map((part) => part.trim()).filter(Boolean);
+        const city = locationParts[0] || newPropertyLocation.trim();
+        const state = locationParts[1] || "";
 
-    const newProperty = {
-      id: Date.now().toString(),
-      name: newPropertyName,
-      location: newPropertyLocation,
-      price: newPropertyPrice,
-      status: "Active",
-      bookings: 0,
-      rating: 0,
-      image: randomImage,
+        const created = await homestaysApi.create({
+          hostId: Number(user.id),
+          title: newPropertyName.trim(),
+          description: "Host-created property from the TravelNestPro dashboard.",
+          location: newPropertyLocation.trim(),
+          city,
+          state,
+          category: "Family Stay",
+          pricePerNight: Number(newPropertyPrice),
+          maxGuests: 4,
+          amenities: "WiFi,Home Food,Parking",
+          imageUrl: newPropertyImage.trim(),
+          distanceInfo: "New listing",
+        });
+
+        setProperties((prev) => [{
+          id: String(created.id),
+          name: created.title,
+          location: created.city || created.location,
+          price: Number(created.pricePerNight || 0),
+          status: created.isAvailable ? "Active" : "Inactive",
+          bookings: 0,
+          rating: Number(created.rating || 0),
+          image: created.imageUrl || "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&q=80",
+          isHostCreated: true,
+        }, ...prev]);
+      } catch {
+        const createdHomestay = addHostHomestay({
+          name: newPropertyName,
+          location: newPropertyLocation,
+          price: newPropertyPrice,
+          image: newPropertyImage,
+          hostName: user?.name,
+          hostAvatar: user?.avatar,
+        });
+
+        setProperties((prev) => [toHostDashboardProperty(createdHomestay), ...prev]);
+      } finally {
+        setIsAddingProperty(false);
+        setNewPropertyName("");
+        setNewPropertyLocation("");
+        setNewPropertyPrice(1200);
+        setNewPropertyImage("");
+        toast.success("Property added successfully.");
+      }
     };
 
-    setProperties((prev) => [newProperty, ...prev]);
+    void saveProperty();
+  };
+
+  const handlePropertyImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setNewPropertyImage(String(reader.result || ""));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCloseAddPropertyModal = () => {
     setIsAddingProperty(false);
-    setNewPropertyName("");
-    setNewPropertyLocation("");
-    setNewPropertyPrice(1200);
-    toast.success("Property added successfully.");
+    setNewPropertyImage("");
+  };
+
+  const handleDeleteProperty = (property: HostDashboardProperty) => {
+    if (!property.isHostCreated) {
+      toast.error("Only newly added host properties can be deleted.");
+      return;
+    }
+
+    const removeProperty = async () => {
+      try {
+        await homestaysApi.remove(Number(property.id));
+      } catch {
+        const deleted = deleteHostHomestay(property.id);
+        if (!deleted) {
+          toast.error("Could not delete property. Please try again.");
+          return;
+        }
+      }
+
+      setProperties((prev) => prev.filter((prop) => prop.id !== property.id));
+      toast.success("Property deleted successfully.");
+    };
+
+    void removeProperty();
   };
 
   const handleSaveProfile = () => {
@@ -118,6 +203,51 @@ export default function HostDashboard() {
     setHostEmail(user?.email || "");
     setHostAvatar(user?.avatar || "");
   }, [user]);
+
+  useEffect(() => {
+    const loadHostData = async () => {
+      if (!user?.id) {
+        return;
+      }
+      try {
+        const [apiHomestays, apiBookings] = await Promise.all([
+          homestaysApi.getByHost(Number(user.id)),
+          bookingsApi.getByHost(Number(user.id)),
+        ]);
+
+        if (Array.isArray(apiHomestays) && apiHomestays.length > 0) {
+          setProperties(apiHomestays.map((item: any) => ({
+            id: String(item.id),
+            name: item.title,
+            location: item.city || item.location,
+            price: Number(item.pricePerNight || 0),
+            status: item.isAvailable ? "Active" : "Inactive",
+            bookings: 0,
+            rating: Number(item.rating || 0),
+            image: item.imageUrl || "https://images.unsplash.com/photo-1494526585095-c41746248156?w=600&q=80",
+            isHostCreated: true,
+          })));
+        }
+
+        if (Array.isArray(apiBookings) && apiBookings.length > 0) {
+          setBookingRequests(apiBookings.map((item: any) => ({
+            id: String(item.id),
+            guest: `Tourist #${item.touristId}`,
+            dates: `${item.checkIn} - ${item.checkOut}`,
+            guests: item.guests || 1,
+            property: `Homestay #${item.homestayId}`,
+            amount: Number(item.totalAmount || 0),
+            status: String(item.status || "pending").toLowerCase(),
+            avatar: "https://i.pravatar.cc/50",
+          })));
+        }
+      } catch {
+        // Keep mock dashboard data when backend API is unavailable.
+      }
+    };
+
+    loadHostData();
+  }, [user?.id]);
 
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -179,7 +309,7 @@ export default function HostDashboard() {
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
-                <img src={user?.avatar || "https://i.pravatar.cc/150"} alt="" className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30" />
+                <img src={getAvatarSrc(user?.avatar)} alt="" className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30" onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }} />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">Host Dashboard 🏡</h1>
                   <p className="text-muted-foreground text-sm">Manage your properties & bookings</p>
@@ -309,6 +439,13 @@ export default function HostDashboard() {
                         </button>
                         <button className="flex-1 border border-border rounded-xl py-2 text-sm flex items-center justify-center gap-1 hover:bg-muted transition-colors">
                           <Eye className="h-3.5 w-3.5" /> View
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProperty(prop)}
+                          className="border border-destructive/30 text-destructive rounded-xl py-2 px-3 text-sm flex items-center justify-center gap-1 hover:bg-destructive/10 transition-colors"
+                          title={prop.isHostCreated ? "Delete property" : "Only newly added properties can be deleted"}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Delete
                         </button>
                       </div>
                     </div>
@@ -510,9 +647,10 @@ export default function HostDashboard() {
               <div className="card-travel p-6 max-w-xl">
                 <div className="flex items-center gap-4 mb-4">
                   <img
-                    src={hostAvatar || "https://i.pravatar.cc/150"}
+                    src={getAvatarSrc(hostAvatar)}
                     alt="Host"
                     className="w-16 h-16 rounded-2xl object-cover border border-border"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
                   />
                   <label className="btn-outline-primary text-sm py-1.5 px-3 cursor-pointer">
                     Change Photo
@@ -539,9 +677,24 @@ export default function HostDashboard() {
                 <input value={newPropertyName} onChange={(e) => setNewPropertyName(e.target.value)} className="input-search w-full md:col-span-2" placeholder="Property name" />
                 <input value={newPropertyLocation} onChange={(e) => setNewPropertyLocation(e.target.value)} className="input-search w-full" placeholder="Location" />
                 <input type="number" value={newPropertyPrice} onChange={(e) => setNewPropertyPrice(Number(e.target.value) || 0)} className="input-search w-full" placeholder="Price per night" />
+                <input value={newPropertyImage} onChange={(e) => setNewPropertyImage(e.target.value)} className="input-search w-full md:col-span-2" placeholder="Image URL (optional)" />
+                <div className="md:col-span-2">
+                  <label className="btn-outline-primary text-sm py-1.5 px-3 cursor-pointer inline-block">
+                    Upload Property Image
+                    <input type="file" accept="image/*" className="hidden" onChange={handlePropertyImageUpload} />
+                  </label>
+                  {newPropertyImage && (
+                    <img
+                      src={newPropertyImage}
+                      alt="Property preview"
+                      className="mt-3 w-full h-40 object-cover rounded-xl border border-border"
+                      onError={(e) => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1512918728675-ed5a9ecdebfd?w=600&q=80"; }}
+                    />
+                  )}
+                </div>
               </div>
               <div className="flex justify-end gap-2 mt-4">
-                <button onClick={() => setIsAddingProperty(false)} className="btn-outline-primary text-sm py-1.5">Cancel</button>
+                <button onClick={handleCloseAddPropertyModal} className="btn-outline-primary text-sm py-1.5">Cancel</button>
                 <button onClick={handleAddProperty} className="btn-primary text-sm py-1.5">Save Property</button>
               </div>
             </div>

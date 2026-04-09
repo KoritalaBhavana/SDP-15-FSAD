@@ -1,26 +1,30 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { signInWithPopup } from "firebase/auth";
-import { getFirebaseAuth, googleProvider, isFirebaseConfigured } from "@/lib/firebase";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { authApi, type ApiUser } from "@/lib/api";
 
-export type UserRole = "tourist" | "host" | "guide" | "chef" | "admin";
+export type UserRole = "tourist" | "host" | "guide" | "admin" | "chef";
+const SESSION_DURATION_MS = 24 * 60 * 60 * 1000;
 
-export interface User {
-  id: string;
+export interface AuthUser {
+  id: number;
   name: string;
   email: string;
   role: UserRole;
+  profileImage?: string;
+  status?: string;
+  token?: string;
   avatar?: string;
-  phone?: string;
+  sessionExpiresAt?: number;
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   isLoggedIn: boolean;
   login: (email: string, password: string, role: UserRole) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
-  authWithGoogle: (role: UserRole, mode: "signin" | "signup") => Promise<void>;
+  authWithGoogle: (role: UserRole, mode: "signin" | "signup", token?: string) => Promise<void>;
   logout: () => void;
-  updateProfile: (data: Partial<Pick<User, "name" | "email" | "avatar" | "phone">>) => void;
+  updateUser: (updates: Partial<AuthUser>) => void;
+  updateProfile: (updates: Partial<Pick<AuthUser, "name" | "email" | "avatar" | "profileImage">>) => void;
 }
 
 interface SignupData {
@@ -31,102 +35,130 @@ interface SignupData {
   phone?: string;
 }
 
+const STORAGE_KEY = "user";
+
+const toRole = (role: string | undefined): UserRole => {
+  const lowered = (role || "tourist").toLowerCase();
+  if (["tourist", "host", "guide", "admin", "chef"].includes(lowered)) {
+    return lowered as UserRole;
+  }
+  return "tourist";
+};
+
+const mapApiUser = (data: ApiUser): AuthUser => ({
+  id: Number(data.id),
+  name: data.name,
+  email: data.email,
+  role: toRole(data.role),
+  profileImage: data.profileImage,
+  avatar: data.profileImage,
+  status: data.status,
+  token: data.token,
+  sessionExpiresAt: Date.now() + SESSION_DURATION_MS,
+});
+
+const initialUser = (): AuthUser | null => {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as AuthUser;
+    if (!parsed?.token || !parsed?.sessionExpiresAt || parsed.sessionExpiresAt < Date.now()) {
+      localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+    return parsed;
+  } catch {
+    localStorage.removeItem(STORAGE_KEY);
+    return null;
+  }
+};
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(initialUser);
 
-  const login = async (email: string, _password: string, role: UserRole) => {
-    // Mock login - in production this would call an API
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setUser({
-      id: "user-" + Date.now(),
-      name: email.split("@")[0].replace(/\./g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
-      email,
-      role,
-      avatar: `https://i.pravatar.cc/150?u=${email}`,
-    });
+  const persistUser = (nextUser: AuthUser | null) => {
+    setUser(nextUser);
+    if (!nextUser) {
+      localStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+  };
+
+  const login = async (email: string, password: string, role: UserRole) => {
+    const response = await authApi.login({ email, password });
+    const normalized = mapApiUser(response as ApiUser);
+
+    if (normalized.role !== role) {
+      throw new Error(`This account belongs to ${normalized.role.toUpperCase()} role.`);
+    }
+
+    persistUser(normalized);
   };
 
   const signup = async (data: SignupData) => {
-    if (data.role === "admin") {
-      throw new Error("Admin signup is disabled. Please sign in with an existing admin account.");
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setUser({
-      id: "user-" + Date.now(),
+    const response = await authApi.register({
       name: data.name,
       email: data.email,
-      role: data.role,
-      avatar: `https://i.pravatar.cc/150?u=${data.email}`,
+      password: data.password,
+      role: data.role.toUpperCase(),
       phone: data.phone,
     });
+    persistUser(mapApiUser(response as ApiUser));
   };
 
-  const authWithGoogle = async (role: UserRole, mode: "signin" | "signup") => {
-    if (mode === "signup" && role === "admin") {
-      throw new Error("Admin signup is disabled. Please sign in with an existing admin account.");
+  const authWithGoogle = async (role: UserRole, mode: "signin" | "signup", token?: string) => {
+    if (!token) {
+      throw new Error("Google OAuth token missing. Integrate Google login button token callback.");
     }
-
-    if (!isFirebaseConfigured) {
-      await new Promise((resolve) => setTimeout(resolve, 600));
-      const email = `google.user.${Date.now()}@example.com`;
-
-      setUser({
-        id: `google-${Date.now()}`,
-        name: "Google User",
-        email,
-        role,
-        avatar: `https://i.pravatar.cc/150?u=${email}`,
-      });
-      return;
+    const response = await authApi.google(token, role.toUpperCase());
+    const normalized = mapApiUser(response as ApiUser);
+    if (mode === "signin" && normalized.role !== role) {
+      throw new Error(`This Google account belongs to ${normalized.role.toUpperCase()} role.`);
     }
-
-    const auth = getFirebaseAuth();
-    const credential = await signInWithPopup(auth, googleProvider);
-    const googleUser = credential.user;
-
-    if (!googleUser.email) {
-      throw new Error("Google account does not have an email. Please use a different account.");
-    }
-
-    setUser({
-      id: googleUser.uid,
-      name: googleUser.displayName || googleUser.email.split("@")[0],
-      email: googleUser.email,
-      role,
-      avatar: googleUser.photoURL || `https://i.pravatar.cc/150?u=${googleUser.email}`,
-      phone: googleUser.phoneNumber || undefined,
-    });
+    persistUser(normalized);
   };
 
   const logout = () => {
-    setUser(null);
+    persistUser(null);
   };
 
-  const updateProfile = (data: Partial<Pick<User, "name" | "email" | "avatar" | "phone">>) => {
-    setUser((prev) => {
-      if (!prev) {
-        return prev;
-      }
-
-      return {
-        ...prev,
-        ...data,
-      };
-    });
+  const updateUser = (updates: Partial<AuthUser>) => {
+    if (!user) {
+      return;
+    }
+    const next = {
+      ...user,
+      ...updates,
+      avatar: updates.avatar ?? updates.profileImage ?? user.avatar,
+      profileImage: updates.profileImage ?? updates.avatar ?? user.profileImage,
+      sessionExpiresAt: user.sessionExpiresAt ?? Date.now() + SESSION_DURATION_MS,
+    };
+    persistUser(next);
   };
 
-  return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, signup, authWithGoogle, logout, updateProfile }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = useMemo<AuthContextType>(() => ({
+    user,
+    isLoggedIn: Boolean(user),
+    login,
+    signup,
+    authWithGoogle,
+    logout,
+    updateUser,
+    updateProfile: updateUser,
+  }), [user]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
-  return ctx;
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
 };

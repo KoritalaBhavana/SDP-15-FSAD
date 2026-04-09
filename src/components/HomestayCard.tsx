@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { Star, MapPin, Wifi, Heart, Users, Utensils } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { loadWishlistIds, toggleWishlist } from "@/lib/travelPreferences";
+import { toast } from "sonner";
 
 interface Homestay {
   id: string;
@@ -30,7 +33,35 @@ const amenityIcons: Record<string, React.ReactNode> = {
 };
 
 export default function HomestayCard({ homestay, variant = "default" }: HomestayCardProps) {
+  const { user } = useAuth();
   const [wishlisted, setWishlisted] = useState(false);
+
+  useEffect(() => {
+    const syncWishlist = async () => {
+      if (!user?.id || user.role !== "tourist") {
+        setWishlisted(false);
+        return;
+      }
+      const ids = await loadWishlistIds(Number(user.id));
+      setWishlisted(ids.includes(Number(homestay.id)));
+    };
+
+    void syncWishlist();
+  }, [homestay.id, user?.id, user?.role]);
+
+  const handleWishlistToggle = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!user?.id || user.role !== "tourist") {
+      toast.error("Sign in as a tourist to use your wishlist.");
+      return;
+    }
+
+    const result = await toggleWishlist(Number(user.id), Number(homestay.id));
+    setWishlisted(result.wishlisted);
+    toast.success(result.wishlisted ? "Added to wishlist." : "Removed from wishlist.");
+  };
 
   return (
     <div className="card-travel group cursor-pointer">
@@ -56,7 +87,7 @@ export default function HomestayCard({ homestay, variant = "default" }: Homestay
 
         {/* Wishlist */}
         <button
-          onClick={(e) => { e.preventDefault(); setWishlisted(!wishlisted); }}
+          onClick={handleWishlistToggle}
           className="absolute top-3 right-3 w-8 h-8 bg-card/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform"
         >
           <Heart className={`h-4 w-4 ${wishlisted ? "fill-red-500 text-red-500" : "text-muted-foreground"}`} />

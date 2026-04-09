@@ -4,7 +4,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomestayCard from "@/components/HomestayCard";
-import { homestays, attractions } from "@/lib/mockData";
+import { attractions } from "@/lib/mockData";
+import { useHomestays } from "@/hooks/useHomestays";
+import { bookingsApi } from "@/lib/api";
+import { DEFAULT_AVATAR, getAvatarSrc } from "@/lib/avatar";
+import { loadWishlistIds } from "@/lib/travelPreferences";
 import { toast } from "sonner";
 import {
   Search, Heart, MapPin, Calendar, Bell, LayoutDashboard,
@@ -14,12 +18,14 @@ import {
 export default function TouristDashboard() {
   const { user, updateProfile } = useAuth();
   const location = useLocation();
+  const homestays = useHomestays();
   const [activeTab, setActiveTab] = useState("discover");
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
   const [profileName, setProfileName] = useState(user?.name || "");
   const [profileEmail, setProfileEmail] = useState(user?.email || "");
   const [profileAvatar, setProfileAvatar] = useState(user?.avatar || "");
+  const [wishlistIds, setWishlistIds] = useState<number[]>([]);
   const [selectedBlogTrip, setSelectedBlogTrip] = useState<{ name: string; location: string; date: string } | null>(null);
   const [blogDraft, setBlogDraft] = useState("");
   const [publishedBlogs, setPublishedBlogs] = useState<Array<{ id: string; title: string; content: string; createdAt: string }>>([]);
@@ -93,6 +99,46 @@ export default function TouristDashboard() {
     setProfileAvatar(user?.avatar || "");
   }, [user]);
 
+  useEffect(() => {
+    const loadTouristData = async () => {
+      if (!user?.id) {
+        return;
+      }
+      try {
+        const apiBookings = await bookingsApi.getByTourist(Number(user.id));
+        if (Array.isArray(apiBookings) && apiBookings.length > 0) {
+          setUpcomingTrips(apiBookings.map((booking: any) => ({
+            id: String(booking.id),
+            homestay: `Homestay #${booking.homestayId}`,
+            location: "India",
+            dates: `${booking.checkIn} - ${booking.checkOut}`,
+            guests: booking.guests,
+            amount: Number(booking.totalAmount || 0),
+            status: booking.status || "Pending",
+            image: "https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?w=400&q=80",
+          })));
+        }
+      } catch {
+        // Keep local mock state when backend is not reachable.
+      }
+    };
+
+    loadTouristData();
+  }, [user?.id]);
+
+  useEffect(() => {
+    const syncWishlist = async () => {
+      if (!user?.id || user.role !== "tourist") {
+        setWishlistIds([]);
+        return;
+      }
+      const ids = await loadWishlistIds(Number(user.id));
+      setWishlistIds(ids);
+    };
+
+    void syncWishlist();
+  }, [user?.id, user?.role]);
+
   const handleAvatarUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -105,6 +151,7 @@ export default function TouristDashboard() {
   };
 
   const activeBookings = upcomingTrips.filter((trip) => trip.status !== "Cancelled");
+  const wishlistedHomestays = homestays.filter((item) => wishlistIds.includes(Number(item.id)));
   const selectedTrip = upcomingTrips.find((trip) => trip.id === selectedTripId) || null;
 
   const handleViewBookingDetails = (tripId: string) => {
@@ -169,9 +216,10 @@ export default function TouristDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <img
-                  src={user?.avatar || "https://i.pravatar.cc/150"}
+                  src={getAvatarSrc(user?.avatar)}
                   alt={user?.name}
                   className="w-12 h-12 rounded-2xl object-cover border-2 border-primary/30"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
                 />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">Welcome back, {user?.name?.split(" ")[0]}! 👋</h1>
@@ -368,11 +416,17 @@ export default function TouristDashboard() {
               <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
                 <Heart className="h-5 w-5 text-destructive" /> My Wishlist
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {homestays.slice(0, 4).map((h) => (
-                  <HomestayCard key={h.id} homestay={h} />
-                ))}
-              </div>
+              {wishlistedHomestays.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {wishlistedHomestays.map((h) => (
+                    <HomestayCard key={h.id} homestay={h} />
+                  ))}
+                </div>
+              ) : (
+                <div className="card-travel p-6 text-center text-muted-foreground">
+                  Your wishlist is empty. Tap the heart on any homestay to save it here.
+                </div>
+              )}
             </div>
           )}
 
@@ -450,9 +504,10 @@ export default function TouristDashboard() {
               <div className="card-travel p-6 max-w-xl">
                 <div className="flex items-center gap-4 mb-4">
                   <img
-                    src={profileAvatar || "https://i.pravatar.cc/150"}
+                    src={getAvatarSrc(profileAvatar)}
                     alt="Profile"
                     className="w-16 h-16 rounded-2xl object-cover border border-border"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).src = DEFAULT_AVATAR; }}
                   />
                   <label className="btn-outline-primary text-sm py-1.5 px-3 cursor-pointer">
                     Change Photo

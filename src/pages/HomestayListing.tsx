@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import HomestayCard from "@/components/HomestayCard";
-import { homestays, INDIAN_LOCATIONS } from "@/lib/mockData";
+import { INDIAN_LOCATIONS } from "@/lib/mockData";
+import { useHomestays } from "@/hooks/useHomestays";
 import { SlidersHorizontal, Map, List, ChevronDown, X, Search } from "lucide-react";
 
 const PRICE_RANGES = [
@@ -25,6 +26,7 @@ const SORT_OPTIONS = [
 export default function HomestayListing() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const homestays = useHomestays();
   const locationQuery = searchParams.get("location") || "";
   const categoryQuery = searchParams.get("category") || "";
 
